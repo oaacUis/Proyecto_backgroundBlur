@@ -1,3 +1,11 @@
+"""
+Authors:
+Otto Andrade
+Brayam Fonseca
+Daniela Cabrales
+"""
+
+
 import os
 from Algorithm.img_processing import BackgroundRemover
 
