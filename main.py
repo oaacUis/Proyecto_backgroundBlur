@@ -1,16 +1,21 @@
-# This is a sample Python script.
-
-# Press Mayús+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import os
+from Algorithm.img_processing import BackgroundRemover
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+def main():
+    # Image route
+    img_route = os.path.join(os.path.dirname(__file__), 'test_images', 'img19_retrato.jpeg')
+
+    # Use example
+    bg_remover = BackgroundRemover()
+    bg_remover.load_image(img_route)
+    bg_remover.show_image()
+    bg_remover.apply_blur(blur_type='gaussian', kernel_size=15)
+    bg_remover.show_blurred_image()
+
+    return 0
 
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    main()
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
