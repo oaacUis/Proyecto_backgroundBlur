@@ -27,7 +27,7 @@ import tensorflow as tf
 
 # URL del modelo preentrenado y nombre del archivo descargado
 url = "https://github.com/qixuxiang/deeplabv3plus/raw/master/model/deeplabv3_mnv2_pascal_train_aug_2018_01_29.tar.gz"
-nombre_archivo = "deeplabv3_mnv2_pascal_train_aug_2018_01_29.tar.gz"
+nombre_archivo = "deeplabv3_mnv2_pascal_train.gz"
 
 # Ruta donde se extraerá el modelo
 ruta_modelo = "./deeplab_model/deeplabv3_mnv2_pascal_train_aug/"
