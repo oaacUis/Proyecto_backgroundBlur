@@ -1,3 +1,4 @@
+# Author: Daniela Cabrales
 import sys
 from img_GUI import ImageEditorApp
 from PyQt5.QtWidgets import QApplication
