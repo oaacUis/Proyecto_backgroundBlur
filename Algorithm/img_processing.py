@@ -32,9 +32,11 @@ class BackgroundRemover:
 
   
     def media(self, k):
-        # f es la imagen y k el tamaño del kernel
-        # f puede ser una imagen a color 
-        # Tamaño del vecindario para la desviación estándar local
+        """f es la imagen y k el tamaño del kernel
+        f: puede ser una imagen a color
+        nn:
+        Tamaño del vecindario para la desviación estándar local
+        """
         nn = 15  
         # Convertir a escala de grises
         g1 = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)  

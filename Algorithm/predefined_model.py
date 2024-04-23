@@ -30,7 +30,7 @@ url = "https://github.com/qixuxiang/deeplabv3plus/raw/master/model/deeplabv3_mnv
 nombre_archivo = "deeplabv3_mnv2_pascal_train.gz"
 
 # Ruta donde se extraerá el modelo
-ruta_modelo = "./deeplab_model/deeplabv3_mnv2_pascal_train_aug/"
+ruta_modelo = "./Algorithm/deeplab_model/deeplabv3_mnv2_pascal_train_aug/"
 
 # Descargar el archivo
 respuesta = requests.get(url)
