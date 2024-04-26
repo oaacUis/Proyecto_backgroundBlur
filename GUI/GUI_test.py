@@ -1,5 +1,5 @@
 # Author: Daniela Cabrales
-# Otto
+# Otto Andrade
 import sys
 from img_GUI import ImageEditorApp
 from PyQt5.QtWidgets import QApplication
