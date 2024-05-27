@@ -1,3 +1,6 @@
+# Created by: Otto Andrade
+# Created by: Brayan Fonseca
+
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
