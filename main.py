@@ -12,7 +12,7 @@ from Algorithm.img_processing import BackgroundRemover
 
 def main():
     # Image route
-    img_route = os.path.join(os.path.dirname(__file__), 'test_images', 'img19_retrato.jpeg')
+    img_route = os.path.join(os.path.dirname(__file__), 'Algorithm/test_images', 'img19_retrato.jpeg')
 
     # Use example
     bg_remover = BackgroundRemover()
