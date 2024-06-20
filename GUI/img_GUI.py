@@ -1,7 +1,5 @@
-from PyQt5.QtWidgets import QLabel, QVBoxLayout, QWidget, QPushButton, QFileDialog
-from PyQt5.QtGui import QImage, QPixmap
-import cv2
-
+from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QMessageBox, QPushButton, QFileDialog
+from PyQt5.QtGui import QPixmap
 
 class ImageEditorApp(QWidget):
     def __init__(self):
@@ -32,38 +30,39 @@ class ImageEditorApp(QWidget):
     #    self.label_image.setGeometry(50, 50, 500, 300)
     #    self.label_image.setScaledContents(True)
 
-    #    btn_load_image = QPushButton("Cargar Imagen", self)
-    #    btn_load_image.setGeometry(50, 10, 100, 30)
-    #    btn_load_image.clicked.connect(self.load_image)
+        btn_load_image = QPushButton("Cargar Imagen", self)
+        btn_load_image.setGeometry(50, 10, 100, 30)
+        btn_load_image.clicked.connect(self.load_image)
+
+        btn_save_image = QPushButton("Guardar Imagen", self)
+        btn_save_image.setGeometry(160, 10, 100, 30)
+        btn_save_image.clicked.connect(self.save_image)
 
     def load_image(self):
-        # Open a file dialog and get the path of the selected image file
-        image_path, _ = QFileDialog.getOpenFileName()
+        file_dialog = QFileDialog(self)
+        file_dialog.setNameFilter("Archivos de Imagen (*.jpg *.jpeg *.png)")
+        file_dialog.setViewMode(QFileDialog.Detail)
+        file_dialog.setFileMode(QFileDialog.ExistingFile)
 
-        # Load the image using OpenCV
-        self.cv_img = cv2.imread(image_path)
+        if file_dialog.exec_():
+            file_name = file_dialog.selectedFiles()[0]
+            pixmap = QPixmap(file_name)
+            self.label_image.setPixmap(pixmap)
 
-        # Convert the image from BGR color space to RGB color space
-        self.cv_img = cv2.cvtColor(self.cv_img, cv2.COLOR_BGR2RGB)
+    def save_image(self):
+        pixmap = self.label_image.pixmap()
+        if pixmap:
+            save_dialog = QFileDialog(self)
+            save_dialog.setAcceptMode(QFileDialog.AcceptSave)
+            save_dialog.setNameFilter("Archivos de Imagen (*.jpg *.jpeg *.png)")
+            save_dialog.setDefaultSuffix('png')
 
-        # Convert the OpenCV image to a PyQt5 QImage
-        qt_img = QImage(self.cv_img.data, self.cv_img.shape[1], self.cv_img.shape[0], self.cv_img.strides[0], QImage.Format_RGB888)
-
-        # Create a QPixmap from the QImage
-        pixmap = QPixmap.fromImage(qt_img)
-
-        # Set the QPixmap as the pixmap for the QLabel
-        self.label.setPixmap(pixmap)
-        
-    def apply_filter(self):
-        # Apply a Gaussian blur filter using OpenCV
-        self.cv_img = cv2.GaussianBlur(self.cv_img, (15, 15), 0)
-
-        # Convert the filtered image to a PyQt5 QImage
-        qt_img = QImage(self.cv_img.data, self.cv_img.shape[1], self.cv_img.shape[0], self.cv_img.strides[0], QImage.Format_RGB888)
-
-        # Create a QPixmap from the QImage
-        pixmap = QPixmap.fromImage(qt_img)
-
-        # Set the QPixmap as the pixmap for the QLabel
-        self.label.setPixmap(pixmap)
+            if save_dialog.exec_():
+                save_path = save_dialog.selectedFiles()[0]
+                if pixmap.save(save_path):
+                    QMessageBox.information(self, "Guardar Imagen", "Imagen guardada exitosamente.")
+                else:
+                    QMessageBox.warning(self, "Guardar Imagen", "Error al guardar la imagen.")
+        else:
+            QMessageBox.warning(self, "Guardar Imagen", "No hay imagen para guardar.")
+    
