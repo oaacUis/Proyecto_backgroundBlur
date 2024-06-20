@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QMessageBox, QPushButton, QFileDialog
+from PyQt5.QtWidgets import QMainWindow, QLabel, QVBoxLayout, QMessageBox, QPushButton, QFileDialog, QWidget
 from PyQt5.QtGui import QPixmap
 
 class ImageEditorApp(QWidget):
@@ -11,24 +11,14 @@ class ImageEditorApp(QWidget):
         # Create a QLabel for displaying the image
         self.label = QLabel(self)
         vbox.addWidget(self.label)
-
-        # Create a QPushButton for loading an image and add it to the QVBoxLayout
-        self.load_image_button = QPushButton("Load Image", self)
-        self.load_image_button.clicked.connect(self.load_image)
-        vbox.addWidget(self.load_image_button)
-
-        # Create a QPushButton for applying the filter and add it to the QVBoxLayout
-        self.apply_filter_button = QPushButton("Apply Gaussian Blur", self)
-        self.apply_filter_button.clicked.connect(self.apply_filter)
-        vbox.addWidget(self.apply_filter_button)
-
+        self.setFixedSize(600, 400)  # Set the window's fixed size to 600x400 pixels
         # Set the QVBoxLayout as the layout for this QWidget
         self.setLayout(vbox)
 
-    # def initUI(self):
-    #    self.label_image = QLabel(self)
-    #    self.label_image.setGeometry(50, 50, 500, 300)
-    #    self.label_image.setScaledContents(True)
+    #def initUI(self):
+        self.label_image = QLabel(self)
+        self.label_image.setGeometry(50, 50, 500, 300)
+        self.label_image.setScaledContents(True)
 
         btn_load_image = QPushButton("Cargar Imagen", self)
         btn_load_image.setGeometry(50, 10, 100, 30)
