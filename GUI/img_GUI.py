@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import *
-from PyQt5.QtGui import *
 from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 import sys
 import time
 
@@ -9,6 +9,17 @@ class ImageEditorApp(QMainWindow):
         super().__init__()
         self.setWindowTitle("GIPFOCUS")
         self.setGeometry(100, 100, 800, 600)
+
+        # Cargar y redimensionar el logo
+        logo_path = ".\GUI\icons\logo.png"  # Asegúrate de que esta ruta sea correcta
+        logo_pixmap = QPixmap(logo_path).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        # Verificar que el logo se carga correctamente
+        if logo_pixmap.isNull():
+            print(f"Error: No se pudo cargar el logo desde la ruta {logo_path}")
+        else:
+            self.setWindowIcon(QIcon(logo_pixmap))
+
         self.initUI()
 
     def initUI(self):
@@ -44,7 +55,7 @@ class ImageEditorApp(QMainWindow):
         # Área central para la imagen
         self.label_image = QLabel(self)
         self.label_image.setAlignment(Qt.AlignCenter)
-        self.label_image.setStyleSheet("background-color: white;")
+        self.label_image.setStyleSheet("background-color: black;")
         self.label_image.setFixedSize(500, 400)
 
         # Layout principal
