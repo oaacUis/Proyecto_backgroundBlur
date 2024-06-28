@@ -126,6 +126,7 @@ class BackgroundRemover:
                     # mask = self.get_ORB_segmentation()
                     mask = np.zeros(shape=(self.image_shape[0],
                                            self.image_shape[1]))
+                    
                 self.mask_list.append(mask.reshape(m * n, 1))
 
         X = np.hstack(tuple(self.mask_list))
