@@ -19,6 +19,11 @@ class ImageEditorApp(QMainWindow):
         else:
             self.setWindowIcon(QIcon(logo_pixmap))
 
+        self.drawing = False
+        self.last_point = QPoint()
+        self.brush_size = 3
+        self.brush_color = Qt.black
+        self.crop_shape = "Rectángulo"  # Forma inicial de recorte
         self.initUI()
 
     def initUI(self):
@@ -43,12 +48,15 @@ class ImageEditorApp(QMainWindow):
         toolbar_top.addAction(color_button)
 
         pencil_button = QAction(QIcon(), "Lápiz", self)
+        pencil_button.triggered.connect(self.use_pencil)
         toolbar_top.addAction(pencil_button)
 
         paint_button = QAction(QIcon(), "Pintura", self)
+        paint_button.triggered.connect(self.use_paint)
         toolbar_top.addAction(paint_button)
 
         crop_button = QAction(QIcon(), "Recortar", self)
+        crop_button.triggered.connect(self.select_crop_shape)
         toolbar_top.addAction(crop_button)
 
         # Área central para la imagen
@@ -79,7 +87,7 @@ class ImageEditorApp(QMainWindow):
         side_layout = QVBoxLayout()
 
         # Primera sección: botones de opciones
-        option_group = QGroupBox("Opciones")
+        option_group = QGroupBox("FILTROS")
         option_layout = QVBoxLayout()
 
         options = ["Seg. Semántica", "Filtro 1", "Filtro 2", "Filtro 3", "Filtro 4"]
@@ -93,14 +101,32 @@ class ImageEditorApp(QMainWindow):
         option_group.setLayout(option_layout)
         side_layout.addWidget(option_group)
 
+        # Botones "Aplicar" y "Visualizar"
+        apply_button = QPushButton("Aplicar")
+        apply_button.clicked.connect(self.apply_filters)  # Método que define la acción del botón
+        visualize_button = QPushButton("Visualizar")
+        visualize_button.clicked.connect(self.visualize_filters)  # Método que define la acción del botón
+
+        side_layout.addWidget(apply_button)
+        side_layout.addWidget(visualize_button)
+
         # Segunda sección: vista previa de edición
         self.preview_label = QLabel(self)
         self.preview_label.setAlignment(Qt.AlignCenter)
-        self.preview_label.setStyleSheet("background-color: gray;")
-        self.preview_label.setFixedSize(200, 200)
+        self.preview_label.setStyleSheet("background-color: black;")
+        self.preview_label.setFixedSize(260, 200)
 
         side_layout.addWidget(self.preview_label)
         self.side_section.setLayout(side_layout)
+    
+    # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
+    def apply_filters(self):
+    # Implementa la lógica para aplicar los filtros seleccionados
+        pass
+
+    def visualize_filters(self):
+    # Implementa la lógica para visualizar los filtros seleccionados
+        pass
 
     def load_image(self):
         file_dialog = QFileDialog(self)
@@ -134,7 +160,127 @@ class ImageEditorApp(QMainWindow):
     def select_color(self):
         color = QColorDialog.getColor()
         if color.isValid():
-            print(f"Color seleccionado: {color.name()}")
+            self.brush_color = color
+
+    def use_pencil(self):
+        self.label_image.mousePressEvent = self.mouse_press
+        self.label_image.mouseMoveEvent = self.mouse_move
+        self.label_image.mouseReleaseEvent = self.mouse_release
+
+    def use_paint(self):
+        pass  # Implementa funcionalidad de pintura
+
+    def select_crop_shape(self):
+        items = ["Rectángulo", "Elipse"]  # Opciones de formas de recorte
+        item, ok = QInputDialog.getItem(self, "Seleccionar Forma de Recorte", 
+                                        "Selecciona la forma de recorte:", items, 0, False)
+        if ok and item:
+            self.crop_shape = item
+
+    def use_crop(self, event):
+        if self.crop_shape == "Rectángulo":
+            self.label_image.mousePressEvent = self.rect_crop_mouse_press
+            self.label_image.mouseMoveEvent = self.rect_crop_mouse_move
+            self.label_image.mouseReleaseEvent = self.rect_crop_mouse_release
+        elif self.crop_shape == "Elipse":
+            self.label_image.mousePressEvent = self.ellipse_crop_mouse_press
+            self.label_image.mouseMoveEvent = self.ellipse_crop_mouse_move
+            self.label_image.mouseReleaseEvent = self.ellipse_crop_mouse_release
+        
+        self.cropping = False
+        self.crop_start = QPoint()
+        self.crop_rect = QRect()
+
+    def rect_crop_mouse_press(self, event):
+        if event.button() == Qt.LeftButton:
+            self.cropping = True
+            self.crop_start = event.pos()
+            self.crop_rect.setTopLeft(self.crop_start)
+            self.crop_rect.setBottomRight(self.crop_start)
+            self.update_crop_preview()
+
+    def rect_crop_mouse_move(self, event):
+        if self.cropping:
+            self.crop_rect.setBottomRight(event.pos())
+            self.update_crop_preview()
+
+    def rect_crop_mouse_release(self, event):
+        if event.button() == Qt.LeftButton and self.cropping:
+            self.cropping = False
+            self.update_crop_preview()
+            self.perform_crop()
+
+    def ellipse_crop_mouse_press(self, event):
+        if event.button() == Qt.LeftButton:
+            self.cropping = True
+            self.crop_start = event.pos()
+            self.crop_rect.setTopLeft(self.crop_start)
+            self.crop_rect.setBottomRight(self.crop_start)
+            self.update_crop_preview()
+
+    def ellipse_crop_mouse_move(self, event):
+        if self.cropping:
+            self.crop_rect.setBottomRight(event.pos())
+            self.update_crop_preview()
+
+    def ellipse_crop_mouse_release(self, event):
+        if event.button() == Qt.LeftButton and self.cropping:
+            self.cropping = False
+            self.update_crop_preview()
+            self.perform_crop()
+
+    def update_crop_preview(self):
+        pixmap = self.label_image.pixmap()
+        if pixmap:
+            painter = QPainter(pixmap)
+            painter.setPen(QPen(Qt.red, 1, Qt.SolidLine))
+            if self.crop_shape == "Rectángulo":
+                painter.drawRect(self.crop_rect)
+            elif self.crop_shape == "Elipse":
+                painter.drawEllipse(self.crop_rect)
+            self.label_image.setPixmap(pixmap)
+
+    def perform_crop(self):
+        pixmap = self.label_image.pixmap()
+        if pixmap:
+            if self.crop_shape == "Rectángulo":
+                cropped_pixmap = pixmap.copy(self.crop_rect.normalized())
+            elif self.crop_shape == "Elipse":
+                mask = QPixmap(pixmap.size())
+                mask.fill(Qt.transparent)
+                painter = QPainter(mask)
+                painter.setBrush(Qt.black)
+                painter.setPen(Qt.NoPen)
+                painter.drawEllipse(self.crop_rect)
+                painter.end()
+
+                cropped_pixmap = QPixmap(pixmap.size())
+                cropped_pixmap.fill(Qt.transparent)
+                painter = QPainter(cropped_pixmap)
+                painter.setCompositionMode(QPainter.CompositionMode_Source)
+                painter.drawPixmap(0, 0, pixmap)
+                painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
+                painter.drawPixmap(0, 0, mask)
+                painter.end()
+
+            self.label_image.setPixmap(cropped_pixmap)
+
+    def mouse_press(self, event):
+        if event.button() == Qt.LeftButton:
+            self.last_point = event.pos()
+            self.drawing = True
+
+    def mouse_move(self, event):
+        if (event.buttons() & Qt.LeftButton) & self.drawing:
+            painter = QPainter(self.label_image.pixmap())
+            painter.setPen(QPen(self.brush_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            painter.drawLine(self.last_point, event.pos())
+            self.last_point = event.pos()
+            self.label_image.update()
+
+    def mouse_release(self, event):
+        if event.button() == Qt.LeftButton:
+            self.drawing = False
 
 class SplashScreen(QSplashScreen):
     def __init__(self, pixmap):
