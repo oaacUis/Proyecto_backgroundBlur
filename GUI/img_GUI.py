@@ -8,7 +8,7 @@ class ImageEditorApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("GIPFOCUS")
-        self.setGeometry(100, 100, 800, 600)
+        self.setGeometry(100, 100, 800, 800)
 
         # Cargar y redimensionar el logo
         logo_path = "./GUI/icons/logo.png"
@@ -63,7 +63,7 @@ class ImageEditorApp(QMainWindow):
         self.label_image = QLabel(self)
         self.label_image.setAlignment(Qt.AlignCenter)
         self.label_image.setStyleSheet("background-color: black;")
-        self.label_image.setFixedSize(500, 400)
+        self.label_image.setFixedSize(700, 600)
 
         # Sección derecha
         self.create_side_section()
@@ -114,7 +114,7 @@ class ImageEditorApp(QMainWindow):
         self.preview_label = QLabel(self)
         self.preview_label.setAlignment(Qt.AlignCenter)
         self.preview_label.setStyleSheet("background-color: black;")
-        self.preview_label.setFixedSize(260, 200)
+        self.preview_label.setFixedSize(600, 300)
 
         side_layout.addWidget(self.preview_label)
         self.side_section.setLayout(side_layout)
