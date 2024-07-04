@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from semanticSegmentationClass import DeepLabModel
 from sklearn.cluster import KMeans
+from scipy.signal import convolve2d
 import os
 import sys
 
@@ -82,27 +83,41 @@ class BackgroundRemover:
 
         return semanticMask_Resized
 
-    def media(self, k):
-        """f es la imagen y k el tamaño del kernel
-        f: puede ser una imagen a color
-        nn:
-        Tamaño del vecindario para la desviación estándar local
-        """
-        nn = 15
-        # Convertir a escala de grises
-        g1 = cv2.cvtColor(self.image, cv2.COLOR_RGB2GRAY)
-        # Suavizado con filtro gaussiano
-        g1_std = cv2.GaussianBlur(g1, (nn, nn), nn / 6,
-                                  borderType=cv2.BORDER_REFLECT)
-        # Gradiente en dirección x
-        g1_gradient = np.abs(cv2.Sobel(g1, cv2.CV_64F, 1, 0, ksize=3))
+    def get_texture_segmentation(self):
+        f = self.frame
 
-        # Combinar los descriptores en un solo mapa de descriptores
-        g = np.stack((g1_std, g1_gradient), axis=-1)
+        # Color characteristics
+        s = (self.m * self.n, 1)
 
-        # Reshape para que g sea del tamaño de f
-        g = g.reshape(-1, g.shape[2])
+        # mean
+        radius = 3
+        kernel_mean = np.ones((radius, radius))
+        kernel_mean = kernel_mean / kernel_mean.size
+        mean = convolve2d(f, kernel_mean, mode="same")
 
+        # variance
+        sq_f = np.power(f, 2)
+        sq_f = convolve2d(sq_f, kernel_mean, mode="same")
+        sq_mean = np.power(mean, 2)
+        variance = sq_f - sq_mean
+
+        # deviation
+        deviation = np.sqrt(np.abs(variance))
+        deviation = deviation / np.max(np.abs(deviation))
+
+        mask = deviation
+        th_s = 0.1
+        s_umbralizada = mask > th_s
+
+        # Define el elemento estructurante para la dilatación
+        kernel = np.ones((3, 3), np.uint8)  # Puedes ajustar el tamaño del kernel según sea necesario
+        # Aplica la dilatación
+        a = s_umbralizada.astype(np.float32)
+        eroded_mask = cv2.erode(a, kernel, iterations=1)
+        dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=1)  # Puedes ajustar el número de iteraciones
+
+        return s_umbralizada
+    
     def get_final_mask(self, mask_dict: dict):
         """_summary_
 
@@ -126,7 +141,8 @@ class BackgroundRemover:
                     # mask = self.get_ORB_segmentation()
                     mask = np.zeros(shape=(self.image_shape[0],
                                            self.image_shape[1]))
-                    
+                elif method == "get_texture_segmentation":
+                    mask = self.get_texture_segmentation()
                 self.mask_list.append(mask.reshape(m * n, 1))
 
         X = np.hstack(tuple(self.mask_list))
