@@ -84,10 +84,11 @@ class BackgroundRemover:
         return semanticMask_Resized
 
     def get_texture_segmentation(self):
-        f = self.frame
+        f = self.image_rgb
+        f = cv2.cvtColor(f, cv2.COLOR_RGB2GRAY)
+        f = f.astype(np.float32) / 255.0
 
-        # Color characteristics
-        s = (self.m * self.n, 1)
+    
 
         # mean
         radius = 3
@@ -112,11 +113,57 @@ class BackgroundRemover:
         # Define el elemento estructurante para la dilatación
         kernel = np.ones((3, 3), np.uint8)  # Puedes ajustar el tamaño del kernel según sea necesario
         # Aplica la dilatación
-        a = s_umbralizada.astype(np.float32)
-        eroded_mask = cv2.erode(a, kernel, iterations=1)
-        dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=1)  # Puedes ajustar el número de iteraciones
+        a = ~s_umbralizada
+        #eroded_mask = cv2.erode(a, kernel, iterations=1)
+        #dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=1)  # Puedes ajustar el número de iteraciones
 
-        return s_umbralizada
+        return a
+    def get_canny_segmentation(self):
+        image = self.image_rgb
+        # Convertir la imagen a escala de grises
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = gray.astype(np.uint8)
+
+        # Aplicar el detector de bordes de Canny
+        edges = cv2.Canny(gray, threshold1=50, threshold2=150)
+
+        # Crear una máscara binaria a partir de los bordes detectados
+        mask = edges
+        mask[mask > 0] = 255
+        th_s = 0.1
+        mask[mask > th_s] = 1
+        mask[mask <= th_s] = 0
+        s_umbralizada = mask>th_s
+        a = ~s_umbralizada
+
+        return mask
+    
+    def get_sobel_segmentation(self):
+        image = self.image_rgb
+
+        # Convertir la imagen a escala de grises
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        
+        # Aplicar un filtro de suavizado (opcional)
+        image = cv2.GaussianBlur(image, (5, 5), 0)
+        
+        # Normalizar la imagen
+        image = image.astype(np.float32) / 255.0
+        
+        # Calcular los gradientes Sobel
+        sobelX = cv2.Sobel(image, cv2.CV_64F, 1, 0)
+        sobelY = cv2.Sobel(image, cv2.CV_64F, 0, 1)
+        
+        # Calcular la magnitud del gradiente
+        sobelCombined = np.sqrt(sobelX**2 + sobelY**2)
+        
+        # Normalizar y convertir a uint8
+        sobelCombined = np.uint8(255 * sobelCombined / np.max(sobelCombined))
+        
+        # Aplicar un umbral para crear una máscara binaria
+        _, mask = cv2.threshold(sobelCombined, 50, 255, cv2.THRESH_BINARY)
+        
+        return mask
     
     def get_final_mask(self, mask_dict: dict):
         """_summary_
@@ -136,13 +183,17 @@ class BackgroundRemover:
         for method, use_mask in mask_dict.items():
             if use_mask:
                 if method == "get_semantic_segmentation":
-                    mask = self.get_semantic_segmentation()
+                    mask = self.get_semantic_segmentation().astype(np.float32)
                 elif method == "get_ORB_segmentation":
                     # mask = self.get_ORB_segmentation()
                     mask = np.zeros(shape=(self.image_shape[0],
                                            self.image_shape[1]))
                 elif method == "get_texture_segmentation":
-                    mask = self.get_texture_segmentation()
+                    mask = self.get_texture_segmentation() *0.1
+                elif method == "get_canny_segmentation":
+                    mask = self.get_canny_segmentation() *0.1
+                elif method == "get_sobel_segmentation":
+                    mask = self.get_sobel_segmentation() *0.001
                 self.mask_list.append(mask.reshape(m * n, 1))
 
         X = np.hstack(tuple(self.mask_list))
