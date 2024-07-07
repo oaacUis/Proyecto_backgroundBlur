@@ -210,6 +210,7 @@ class BackgroundRemover:
             labels = np.where(labels == 0, 1, 0)
 
         self.class_mask = labels.reshape(m, n)
+        print("Class mask max value: ", np.max(self.class_mask))
         # return class_mask
 
     def apply_final_mask(self, blur_type="gaussian", kernel_size=5):
@@ -234,7 +235,7 @@ class BackgroundRemover:
             blurred_background.astype(np.float32) / 255.0,
             np.clip(self.class_mask.astype(np.float32), a_min=0.0, a_max=1.0),
             nlevels=5,
-        )
+        )*255
         # masked_image = blurred_background * mask + self.image_rgb *(1 - mask)
-        self.modified_image = np.copy(masked_image)
+        self.modified_image = np.copy(masked_image.astype(np.uint8))
         # print(self.modified_image.shape)
