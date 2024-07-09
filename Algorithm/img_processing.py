@@ -237,5 +237,5 @@ class BackgroundRemover:
             nlevels=5,
         )
         # masked_image = blurred_background * mask + self.image_rgb *(1 - mask)
-        self.modified_image = np.copy(masked_image)
+        self.modified_image = np.clip(np.copy(masked_image), a_min=0, a_max=255)
         # print(self.modified_image.shape)

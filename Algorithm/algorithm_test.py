@@ -25,7 +25,7 @@ def main():
     
     # Assuming get_final_mask updates an attribute with the mask, e.g.,
     bg_remover.apply_final_mask()
-    plt.imshow(bg_remover.modified_image),plt.axis("off"),plt.show()
+    plt.imshow(bg_remover.modified_image),plt.axis("off"), plt.title("modified img"),plt.show()
 
     # Show the segmentation mask
     # This assumes there's a method show_image in BackgroundRemover and an attribute for the mask

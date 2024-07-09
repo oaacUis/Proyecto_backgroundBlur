@@ -10,6 +10,7 @@ import cv2
 import sys
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 class ImageEditorApp(QMainWindow):
@@ -41,7 +42,7 @@ class ImageEditorApp(QMainWindow):
         # From BackgroundRemover
         self.bg_remover = BackgroundRemover()
         self.mask_list = {
-            "get_semantic_segmentation": True,
+            "get_semantic_segmentation": False,
             "get_texture_segmentation": False,
             "get_canny_segmentation": False,
             "get_sobel_segmentation": False,
@@ -110,24 +111,25 @@ class ImageEditorApp(QMainWindow):
         option_group = QGroupBox("FILTROS")
         option_layout = QVBoxLayout()
 
-        options = [
-            "Semantic Segmentation",
-            "ORB Segmentation",
-            "Filtro 2",
-            "Filtro 3",
-            "Filtro 4",
-        ]
         self.checkboxes = []
 
+        # Estructura definir los filtros
+        
+        # Filtro 1: Segmentación semántica
         self.semanticSegmentationCheckBox = QCheckBox("Semantic Segmentation", self)
         option_layout.addWidget(self.semanticSegmentationCheckBox)
+        
+        # Filtro 2: Segmentación de texturas
         self.orbSegmentationCheckBox = QCheckBox("ORB Segmentation", self)
         option_layout.addWidget(self.orbSegmentationCheckBox)
-        # Add more checkboxes as needed
+        # Add more checkboxes as needed ...
 
         # Connect checkboxes to their respective slot functions
         self.semanticSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
         self.orbSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        #self.cannySegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        #self.sobelSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        
         # Add connections for other checkboxes
 
         option_group.setLayout(option_layout)
@@ -169,20 +171,31 @@ class ImageEditorApp(QMainWindow):
     # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
     def apply_filters(self):
         self.bg_remover.apply_final_mask()
-        pixmap = self.convert_cv_qt(self.bg_remover.modified_image, saveSize=True)
-        self.label_image.setPixmap(pixmap)
+        k = self.bg_remover.modified_image*255
+        k = k.astype(np.uint8)
+        print("Result mask shape from apply", k.shape)
+        print(f"Max value in pixmap_final: {np.max(k)}")
+        print(f"Min value in pixmap_final: {np.min(k)}")
+        print(f"Type of pixmap_final: {type(k[0, 0, 0])}")
+        self.pixmap_final = self.convert_cv_qt(k, saveSize=True)
+        self.label_image.setPixmap(self.pixmap_final)
 
     def visualize_filters(self):
         print("Visualizing current mask from filters")
-        self.bg_remover.get_final_mask(self.mask_list)
+        self.bg_remover.get_final_mask(mask_dict=self.mask_list)
         self.result_mask = self.bg_remover.class_mask * 255
-        print("Result mask shape from visualize", self.result_mask.shape)
         self.result_mask = self.result_mask.astype(np.uint8)
-        pixmap = self.convert_grayscale_qt(
+        print("Result mask shape from visualize", self.result_mask.shape)
+        print(f"Max value in final_mask: {np.max(self.result_mask)}")
+        print(f"Min value in final_mask: {np.min(self.result_mask)}")
+        print(f"Type of final_mask: {type(self.result_mask[0, 0])}")
+        self.pixmap_mask = self.convert_cv_qt(
             self.result_mask, saveSize=True,
             setResize=True, objetiveSize=(600, 300))
         
-        self.preview_label.setPixmap(pixmap)
+        # canvas = QPixmap(600, 300)  # Adjust size as needed
+        # canvas.fill(Qt.red)
+        self.preview_label.setPixmap(self.pixmap_mask)
 
     def load_image(self):
         file_dialog = QFileDialog(self)
@@ -204,6 +217,8 @@ class ImageEditorApp(QMainWindow):
 
     def save_image(self):
         pixmap = self.label_image.pixmap()
+        # pixmap = self.pixmap_mask
+        #pixmap = self.pixmap_final
         if pixmap:
             save_dialog = QFileDialog(self)
             save_dialog.setAcceptMode(QFileDialog.AcceptSave)
@@ -213,8 +228,10 @@ class ImageEditorApp(QMainWindow):
             if save_dialog.exec_():
                 save_path = save_dialog.selectedFiles()[0]
                 # Opcion 1 - Guardar con el tamaño original
+                n,m,_ = self.bg_remover.image_shape
                 a = self.convert_qt_cv(pixmap, setResize=True)
-                pixmap = self.convert_cv_qt(a, setResize=False)
+                pixmap = self.convert_cv_qt(a, setResize=False,
+                                            objetiveSize=(n, m))
 
                 # Opcion 2 - Guardar con el tamaño actual de (700, 600)
                 # pixmap = self.label_image.pixmap()
@@ -320,8 +337,7 @@ class ImageEditorApp(QMainWindow):
             self.rgb_image = cv_img.astype(np.uint8)
             if len(self.rgb_image.shape) == 2:
                 self.rgb_image = cv2.cvtColor(self.rgb_image, cv2.COLOR_GRAY2RGB)
-                
-                
+
         else:
             image = cv2.imread(cv_img)
             self.rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -362,17 +378,17 @@ class ImageEditorApp(QMainWindow):
             )
         return cv_img
     
-    def convert_grayscale_qt(self, grayscale_img, saveSize=False,
+    def convert_grayscale_qt(self, grayscale_image, saveSize=False,
                              setResize=True, objetiveSize=(600, 300)):
         
-        self.grayscale_img = grayscale_img
-        if isinstance(grayscale_img, str):  # If the input is a file path
-            self.grayscale_img = cv2.imread(grayscale_img, cv2.IMREAD_GRAYSCALE)
-        elif not isinstance(grayscale_img, np.ndarray):
+        self.grayscale_img = grayscale_image
+        if isinstance(grayscale_image, str):  # If the input is a file path
+            self.grayscale_img = cv2.imread(grayscale_image, cv2.IMREAD_GRAYSCALE)
+        elif not isinstance(grayscale_image, np.ndarray):
             raise ValueError("The input must be a file path or a numpy array.")
 
         # Ensure the image is in grayscale format (2D numpy array)
-        if len(grayscale_img.shape) != 2:
+        if len(grayscale_image.shape) != 2:
             raise ValueError("The input image is not in grayscale format.")
 
         # Convert the grayscale image to QPixmap using the existing method
@@ -384,7 +400,7 @@ class ImageEditorApp(QMainWindow):
 
         if setResize:  # Resize the image to a fixed size
             self.grayscale_img = cv2.resize(self.grayscale_img, objetiveSize)
-
+        plt.imshow(self.grayscale_img, cmap='gray')
         # Convert the numpy array to QImage
         qImg = QImage(self.grayscale_img.data, self.gray_width, self.gray_height,
                       bytesPerLine, QImage.Format_Grayscale8)
