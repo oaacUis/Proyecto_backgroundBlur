@@ -1,8 +1,12 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+from PyQt5.QtGui import QPixmap
+import cv2
 import sys
 import time
+import numpy as np
+
 
 class ImageEditorApp(QMainWindow):
     def __init__(self):
@@ -12,8 +16,10 @@ class ImageEditorApp(QMainWindow):
 
         # Cargar y redimensionar el logo
         logo_path = "./GUI/icons/logo.png"
-        logo_pixmap = QPixmap(logo_path).scaled(64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-        
+        logo_pixmap = QPixmap(logo_path).scaled(
+            64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation
+        )
+
         if logo_pixmap.isNull():
             print(f"Error: No se pudo cargar el logo desde la ruta {logo_path}")
         else:
@@ -21,12 +27,15 @@ class ImageEditorApp(QMainWindow):
 
         self.drawing = False
         self.last_point = QPoint()
-        self.brush_size = 3
+        self.brush_size = 20
         self.brush_color = Qt.black
-        self.crop_shape = "Rectángulo"  # Forma inicial de recorte
+        self.currentTool = None
+        self.counter = 0
         self.initUI()
 
     def initUI(self):
+
+        self.setMouseTracking(True)
         # Menú
         menubar = self.menuBar()
         file_menu = menubar.addMenu("Archivo")
@@ -51,34 +60,30 @@ class ImageEditorApp(QMainWindow):
         pencil_button.triggered.connect(self.use_pencil)
         toolbar_top.addAction(pencil_button)
 
-        paint_button = QAction(QIcon(), "Pintura", self)
-        paint_button.triggered.connect(self.use_paint)
-        toolbar_top.addAction(paint_button)
-
-        crop_button = QAction(QIcon(), "Recortar", self)
-        crop_button.triggered.connect(self.select_crop_shape)
-        toolbar_top.addAction(crop_button)
-
         # Área central para la imagen
         self.label_image = QLabel(self)
         self.label_image.setAlignment(Qt.AlignCenter)
         self.label_image.setStyleSheet("background-color: black;")
         self.label_image.setFixedSize(700, 600)
+        canvas = QPixmap(700, 600)  # Adjust size as needed
+        canvas.fill(Qt.white)  # Fill the canvas with white background
+        self.label_image.setPixmap(canvas)
+        print("Initial image: ", self.label_image.pixmap())
 
         # Sección derecha
         self.create_side_section()
 
         # Layout principal
-        main_layout = QHBoxLayout()
-        image_layout = QVBoxLayout()
-        image_layout.addWidget(toolbar_top)
-        image_layout.addWidget(self.label_image)
+        self.main_layout = QHBoxLayout()
+        self.image_layout = QVBoxLayout()
+        self.image_layout.addWidget(toolbar_top)
+        self.image_layout.addWidget(self.label_image)
 
-        main_layout.addLayout(image_layout)
-        main_layout.addWidget(self.side_section)
+        self.main_layout.addLayout(self.image_layout)
+        self.main_layout.addWidget(self.side_section)
 
         central_widget = QWidget()
-        central_widget.setLayout(main_layout)
+        central_widget.setLayout(self.main_layout)
         self.setCentralWidget(central_widget)
 
     def create_side_section(self):
@@ -103,9 +108,13 @@ class ImageEditorApp(QMainWindow):
 
         # Botones "Aplicar" y "Visualizar"
         apply_button = QPushButton("Aplicar")
-        apply_button.clicked.connect(self.apply_filters)  # Método que define la acción del botón
+        apply_button.clicked.connect(
+            self.apply_filters
+        )  # Método que define la acción del botón
         visualize_button = QPushButton("Visualizar")
-        visualize_button.clicked.connect(self.visualize_filters)  # Método que define la acción del botón
+        visualize_button.clicked.connect(
+            self.visualize_filters
+        )  # Método que define la acción del botón
 
         side_layout.addWidget(apply_button)
         side_layout.addWidget(visualize_button)
@@ -118,14 +127,14 @@ class ImageEditorApp(QMainWindow):
 
         side_layout.addWidget(self.preview_label)
         self.side_section.setLayout(side_layout)
-    
+
     # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
     def apply_filters(self):
-    # Implementa la lógica para aplicar los filtros seleccionados
+        # Implementa la lógica para aplicar los filtros seleccionados
         pass
 
     def visualize_filters(self):
-    # Implementa la lógica para visualizar los filtros seleccionados
+        # Implementa la lógica para visualizar los filtros seleccionados
         pass
 
     def load_image(self):
@@ -136,9 +145,17 @@ class ImageEditorApp(QMainWindow):
 
         if file_dialog.exec_():
             file_name = file_dialog.selectedFiles()[0]
-            pixmap = QPixmap(file_name)
+            #pixmap = QPixmap(file_name)
+            #pixmap = QPixmap(700, 600)  # Adjust size as needed
+            #pixmap.fill(Qt.blue)
+            pixmap = self.convert_cv_qt(file_name, saveSize=True)
             self.label_image.setPixmap(pixmap)
-            self.label_image.setScaledContents(True)
+            print("New image to: ", self.label_image.pixmap())
+            # self.label_image.setScaledContents(True) # Esto no funciona adecuadamente
+            # print("New image to (After scale): ", self.label_image.pixmap())
+            self.reset_meths()
+            # self.main_layout.update()
+            #main_layout
 
     def save_image(self):
         pixmap = self.label_image.pixmap()
@@ -146,16 +163,35 @@ class ImageEditorApp(QMainWindow):
             save_dialog = QFileDialog(self)
             save_dialog.setAcceptMode(QFileDialog.AcceptSave)
             save_dialog.setNameFilter("Archivos de Imagen (*.jpg *.jpeg *.png)")
-            save_dialog.setDefaultSuffix('png')
+            save_dialog.setDefaultSuffix("png")
 
             if save_dialog.exec_():
                 save_path = save_dialog.selectedFiles()[0]
+                # Opcion 1 - Guardar con el tamaño original
+                a = self.convert_qt_cv(pixmap, setResize=True)
+                pixmap = self.convert_cv_qt(a, setResize=False)
+                
+                # Opcion 2 - Guardar con el tamaño actual de (700, 600)
+                # pixmap = self.label_image.pixmap()
+                
                 if pixmap.save(save_path):
-                    QMessageBox.information(self, "Guardar Imagen", "Imagen guardada exitosamente.")
+                    QMessageBox.information(
+                        self, "Guardar Imagen", "Imagen guardada exitosamente."
+                    )
                 else:
-                    QMessageBox.warning(self, "Guardar Imagen", "Error al guardar la imagen.")
+                    QMessageBox.warning(
+                        self, "Guardar Imagen", "Error al guardar la imagen."
+                    )
         else:
             QMessageBox.warning(self, "Guardar Imagen", "No hay imagen para guardar.")
+
+    def reset_meths(self):
+        self.drawing = False
+        self.last_point = QPoint()
+        self.brush_size = 20
+        self.brush_color = Qt.black
+        self.currentTool = None
+        self.counter = 0
 
     def select_color(self):
         color = QColorDialog.getColor()
@@ -163,124 +199,92 @@ class ImageEditorApp(QMainWindow):
             self.brush_color = color
 
     def use_pencil(self):
-        self.label_image.mousePressEvent = self.mouse_press
-        self.label_image.mouseMoveEvent = self.mouse_move
-        self.label_image.mouseReleaseEvent = self.mouse_release
-
-    def use_paint(self):
-        pass  # Implementa funcionalidad de pintura
-
-    def select_crop_shape(self):
-        items = ["Rectángulo", "Elipse"]  # Opciones de formas de recorte
-        item, ok = QInputDialog.getItem(self, "Seleccionar Forma de Recorte", 
-                                        "Selecciona la forma de recorte:", items, 0, False)
-        if ok and item:
-            self.crop_shape = item
-
-    def use_crop(self, event):
-        if self.crop_shape == "Rectángulo":
-            self.label_image.mousePressEvent = self.rect_crop_mouse_press
-            self.label_image.mouseMoveEvent = self.rect_crop_mouse_move
-            self.label_image.mouseReleaseEvent = self.rect_crop_mouse_release
-        elif self.crop_shape == "Elipse":
-            self.label_image.mousePressEvent = self.ellipse_crop_mouse_press
-            self.label_image.mouseMoveEvent = self.ellipse_crop_mouse_move
-            self.label_image.mouseReleaseEvent = self.ellipse_crop_mouse_release
+        self.currentTool = "pencil"
+        print("Current tool: Pencil")
         
-        self.cropping = False
-        self.crop_start = QPoint()
-        self.crop_rect = QRect()
+        """print("Counter: ", self.counter)
+        if self.counter ==1:
+            pixmap = QPixmap(700, 600)  # Adjust size as needed
+            pixmap.fill(Qt.yellow)
+            self.label_image.setPixmap(pixmap)
+        elif self.counter == 2:
+            pixmap = QPixmap(700, 600)
+            pixmap.fill(Qt.green)
+            self.label_image.setPixmap(pixmap)
+        elif self.counter == 3:
+            pixmap = QPixmap(700, 600)
+            pixmap.fill(Qt.white)
+            self.label_image.setPixmap(pixmap)
+        self.counter += 1"""
 
-    def rect_crop_mouse_press(self, event):
-        if event.button() == Qt.LeftButton:
-            self.cropping = True
-            self.crop_start = event.pos()
-            self.crop_rect.setTopLeft(self.crop_start)
-            self.crop_rect.setBottomRight(self.crop_start)
-            self.update_crop_preview()
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.currentTool == "pencil":
+            print("Mouse pressed")
+            self.drawing = True
+            # Convert global position to local position relative to label_image
+            localPos = self.label_image.mapFromGlobal(event.globalPos())
+            self.lastPoint = localPos
 
-    def rect_crop_mouse_move(self, event):
-        if self.cropping:
-            self.crop_rect.setBottomRight(event.pos())
-            self.update_crop_preview()
-
-    def rect_crop_mouse_release(self, event):
-        if event.button() == Qt.LeftButton and self.cropping:
-            self.cropping = False
-            self.update_crop_preview()
-            self.perform_crop()
-
-    def ellipse_crop_mouse_press(self, event):
-        if event.button() == Qt.LeftButton:
-            self.cropping = True
-            self.crop_start = event.pos()
-            self.crop_rect.setTopLeft(self.crop_start)
-            self.crop_rect.setBottomRight(self.crop_start)
-            self.update_crop_preview()
-
-    def ellipse_crop_mouse_move(self, event):
-        if self.cropping:
-            self.crop_rect.setBottomRight(event.pos())
-            self.update_crop_preview()
-
-    def ellipse_crop_mouse_release(self, event):
-        if event.button() == Qt.LeftButton and self.cropping:
-            self.cropping = False
-            self.update_crop_preview()
-            self.perform_crop()
-
-    def update_crop_preview(self):
-        pixmap = self.label_image.pixmap()
-        if pixmap:
+    def mouseMoveEvent(self, event):
+        if (event.buttons() & Qt.LeftButton) and self.drawing and self.currentTool == "pencil":
+            print("Mouse is moving...")
+            pixmap = self.label_image.pixmap()
+            print(self.label_image.pixmap())
             painter = QPainter(pixmap)
-            painter.setPen(QPen(Qt.red, 1, Qt.SolidLine))
-            if self.crop_shape == "Rectángulo":
-                painter.drawRect(self.crop_rect)
-            elif self.crop_shape == "Elipse":
-                painter.drawEllipse(self.crop_rect)
+            painter.setPen(QPen(self.brush_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            # Convert global position to local position relative to label_image
+            localPos = self.label_image.mapFromGlobal(event.globalPos())
+            painter.drawLine(self.lastPoint, localPos)
+            self.lastPoint = localPos
             self.label_image.setPixmap(pixmap)
 
-    def perform_crop(self):
-        pixmap = self.label_image.pixmap()
-        if pixmap:
-            if self.crop_shape == "Rectángulo":
-                cropped_pixmap = pixmap.copy(self.crop_rect.normalized())
-            elif self.crop_shape == "Elipse":
-                mask = QPixmap(pixmap.size())
-                mask.fill(Qt.transparent)
-                painter = QPainter(mask)
-                painter.setBrush(Qt.black)
-                painter.setPen(Qt.NoPen)
-                painter.drawEllipse(self.crop_rect)
-                painter.end()
-
-                cropped_pixmap = QPixmap(pixmap.size())
-                cropped_pixmap.fill(Qt.transparent)
-                painter = QPainter(cropped_pixmap)
-                painter.setCompositionMode(QPainter.CompositionMode_Source)
-                painter.drawPixmap(0, 0, pixmap)
-                painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
-                painter.drawPixmap(0, 0, mask)
-                painter.end()
-
-            self.label_image.setPixmap(cropped_pixmap)
-
-    def mouse_press(self, event):
-        if event.button() == Qt.LeftButton:
-            self.last_point = event.pos()
-            self.drawing = True
-
-    def mouse_move(self, event):
-        if (event.buttons() & Qt.LeftButton) & self.drawing:
-            painter = QPainter(self.label_image.pixmap())
-            painter.setPen(QPen(self.brush_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-            painter.drawLine(self.last_point, event.pos())
-            self.last_point = event.pos()
-            self.label_image.update()
-
-    def mouse_release(self, event):
-        if event.button() == Qt.LeftButton:
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.drawing and self.currentTool == "pencil":
+            print("Mouse released")
             self.drawing = False
+            # self.label_image.setPixmap(self.label_image.pixmap())
+            # self.counter += 1
+            print("Counter: ", self.counter)
+            if self.counter > 3:
+                self.save_image()
+
+    # To convert from opencv to QPixmap
+    def convert_cv_qt(self, cv_img, saveSize=False, setResize=True):
+        """Convert from an opencv image to QPixmap"""
+        if isinstance(cv_img, np.ndarray):
+            # cv_img is a numpy array
+            self.rgb_image = cv_img.astype(np.uint8)
+        else:
+            image = cv2.imread(cv_img)
+            self.rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        if saveSize:    # Save the original size of the image
+            self.original_image_shape = self.rgb_image.shape
+        
+        if setResize:   # Resize the image to a fixed size
+            self.rgb_image = cv2.resize(self.rgb_image, (700, 600))
+        
+        h, w, ch = self.rgb_image.shape
+        bytes_per_line = ch * w
+        convert_to_Qt_format = QImage(self.rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        # p = convert_to_Qt_format.scaled(700, 600, Qt.KeepAspectRatio) # En caso de querer escalar la imagen QT
+        p = convert_to_Qt_format
+        return QPixmap.fromImage(p)
+    
+    def convert_qt_cv(self, qt_img, setResize=False): # To convert from QPixmap to opencv
+        """Convert from a QPixmap to an opencv image"""
+        qimage = qt_img.toImage()
+        if qimage.format() != QImage.Format_RGB888:
+            qimage = qimage.convertToFormat(QImage.Format_RGB888)
+        b = qimage.bits()
+        b.setsize(qimage.byteCount())
+        stride = qimage.bytesPerLine()
+        # cv_img = np.array(b).reshape(qimage.height(), qimage.width(), 3)
+        cv_img = np.frombuffer(b, dtype=np.uint8).reshape((qimage.height(), stride//3, 3))
+        if setResize:
+            cv_img = cv2.resize(cv_img, (self.original_image_shape[1], self.original_image_shape[0]))
+        return cv_img
+
 
 class SplashScreen(QSplashScreen):
     def __init__(self, pixmap):
@@ -297,7 +301,9 @@ class SplashScreen(QSplashScreen):
         self.progress_bar.move(120, 570)
         self.Loading_text = QLabel(self)
         self.Loading_text.setFont(QFont("Calibri", 11))
-        self.Loading_text.setStyleSheet("QLabel { background-color : None; color : #c12cff; }")
+        self.Loading_text.setStyleSheet(
+            "QLabel { background-color : None; color : #c12cff; }"
+        )
         self.Loading_text.setGeometry(125, 585, 300, 50)
 
     def update_progress(self, i, text):
@@ -307,6 +313,7 @@ class SplashScreen(QSplashScreen):
         while time.time() < t + 0.035:
             QApplication.processEvents()
 
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
 
@@ -314,9 +321,18 @@ if __name__ == "__main__":
     splash = SplashScreen(splash_pix)
     splash.show()
 
-    texts = ["Initializing...", "Getting path...", "Measuring memory...", "Scanning for plugs in...",
-             "Initializing panels...", "Loading library...", "Building color conversion tables...",
-             "Reading tools...", "Reading Preferences...", "Getting ready..."]
+    texts = [
+        "Initializing...",
+        "Getting path...",
+        "Measuring memory...",
+        "Scanning for plugs in...",
+        "Initializing panels...",
+        "Loading library...",
+        "Building color conversion tables...",
+        "Reading tools...",
+        "Reading Preferences...",
+        "Getting ready...",
+    ]
     for i in range(0, 101):
         splash.update_progress(i, texts[min(i // 10, len(texts) - 1)])
     time.sleep(1)
