@@ -175,13 +175,13 @@ class ImageEditorApp(QMainWindow):
     def visualize_filters(self):
         print("Visualizing current mask from filters")
         self.bg_remover.get_final_mask(self.mask_list)
-        self.appiled_mask = (
-            np.clip(self.bg_remover.class_mask, a_min=0, a_max=1) * 255
-        ) // 1
-        pixmap = self.convert_cv_qt(
-            self.appiled_mask, saveSize=False,
-            setResize=True, objetiveSize=(600, 300)
-        )
+        self.result_mask = self.bg_remover.class_mask * 255
+        print("Result mask shape from visualize", self.result_mask.shape)
+        self.result_mask = self.result_mask.astype(np.uint8)
+        pixmap = self.convert_grayscale_qt(
+            self.result_mask, saveSize=True,
+            setResize=True, objetiveSize=(600, 300))
+        
         self.preview_label.setPixmap(pixmap)
 
     def load_image(self):
@@ -320,6 +320,8 @@ class ImageEditorApp(QMainWindow):
             self.rgb_image = cv_img.astype(np.uint8)
             if len(self.rgb_image.shape) == 2:
                 self.rgb_image = cv2.cvtColor(self.rgb_image, cv2.COLOR_GRAY2RGB)
+                
+                
         else:
             image = cv2.imread(cv_img)
             self.rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -359,6 +361,38 @@ class ImageEditorApp(QMainWindow):
                 cv_img, (self.original_image_shape[1], self.original_image_shape[0])
             )
         return cv_img
+    
+    def convert_grayscale_qt(self, grayscale_img, saveSize=False,
+                             setResize=True, objetiveSize=(600, 300)):
+        
+        self.grayscale_img = grayscale_img
+        if isinstance(grayscale_img, str):  # If the input is a file path
+            self.grayscale_img = cv2.imread(grayscale_img, cv2.IMREAD_GRAYSCALE)
+        elif not isinstance(grayscale_img, np.ndarray):
+            raise ValueError("The input must be a file path or a numpy array.")
+
+        # Ensure the image is in grayscale format (2D numpy array)
+        if len(grayscale_img.shape) != 2:
+            raise ValueError("The input image is not in grayscale format.")
+
+        # Convert the grayscale image to QPixmap using the existing method
+        self.gray_height, self.gray_width = self.grayscale_img.shape
+        bytesPerLine = self.gray_width
+
+        if saveSize:  # Save the original size of the image
+            self.original_grayimage_shape = (self.gray_height, self.gray_width)
+
+        if setResize:  # Resize the image to a fixed size
+            self.grayscale_img = cv2.resize(self.grayscale_img, objetiveSize)
+
+        # Convert the numpy array to QImage
+        qImg = QImage(self.grayscale_img.data, self.gray_width, self.gray_height,
+                      bytesPerLine, QImage.Format_Grayscale8)
+
+        # Convert QImage to QPixmap
+        pixmap = QPixmap.fromImage(qImg)
+        
+        return pixmap
 
 
 class SplashScreen(QSplashScreen):
