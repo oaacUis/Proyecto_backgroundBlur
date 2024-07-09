@@ -26,6 +26,7 @@ class ImageEditorApp(QMainWindow):
             self.setWindowIcon(QIcon(logo_pixmap))
 
         self.drawing = False
+        self.pencil_mode = False
         self.last_point = QPoint()
         self.brush_size = 20
         self.brush_color = Qt.black
@@ -131,9 +132,11 @@ class ImageEditorApp(QMainWindow):
     # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
     def apply_filters(self):
         # Implementa la lógica para aplicar los filtros seleccionados
+        # Implementa la lógica para aplicar los filtros seleccionados
         pass
 
     def visualize_filters(self):
+        # Implementa la lógica para visualizar los filtros seleccionados
         # Implementa la lógica para visualizar los filtros seleccionados
         pass
 
@@ -197,6 +200,11 @@ class ImageEditorApp(QMainWindow):
         color = QColorDialog.getColor()
         if color.isValid():
             self.brush_color = color
+
+    def select_brush_size(self):
+        size, ok = QInputDialog.getInt(self, "Seleccionar Tamaño del Pincel", "Tamaño del Pincel:", self.brush_size, 1, 50, 1)
+        if ok:
+            self.brush_size = size
 
     def use_pencil(self):
         self.currentTool = "pencil"
