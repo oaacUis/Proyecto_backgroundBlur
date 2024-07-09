@@ -84,7 +84,7 @@ class BackgroundRemover:
             prediction_size = (original_size[1], original_size[0])
         semanticMask_Resized = cv2.resize(mascara_prediccion, prediction_size)
 
-        return semanticMask_Resized
+        return semanticMask_Resized.astype(np.float32)
 
     def get_texture_segmentation(self):
         """
@@ -226,7 +226,7 @@ class BackgroundRemover:
         for method, use_mask in mask_dict.items():
             if use_mask:
                 if method == "get_semantic_segmentation":
-                    mask = self.get_semantic_segmentation().astype(np.float32)
+                    mask = self.get_semantic_segmentation()
                 elif method == "get_ORB_segmentation":
                     # mask = self.get_ORB_segmentation()
                     mask = np.zeros(shape=(self.image_shape[0], self.image_shape[1]))
@@ -269,6 +269,9 @@ class BackgroundRemover:
 
         Returns:
             None
+
+        Note:
+            Mask attrib spected to be a numpy array from 0.0 to 1.0
         """
         mask = np.dstack((self.class_mask, self.class_mask, self.class_mask))
         blurred_background = cv2.GaussianBlur(

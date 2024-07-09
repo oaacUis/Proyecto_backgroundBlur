@@ -31,6 +31,18 @@ def main():
     bg_remover.apply_final_mask()
     bg_remover.show_image(bg_remover.modified_image)
     
+    print("--------Semantic---------")
+    final_mask = bg_remover.get_semantic_segmentation()
+    print(final_mask.shape)
+    if final_mask.ndim == 2:
+        print(type(final_mask[0,0]))
+    else:
+        print(type(final_mask[0,0,0]))
+    print(type(final_mask))
+    
+    print(f"Max value in final_mask: {np.max(final_mask)}")
+    print(f"Min value in final_mask: {np.min(final_mask)}")
+    
     # Show the segmentation mask
     # This assumes there's a method show_image in BackgroundRemover and an attribute for the mask
     #bg_remover.show_image(bg_remover.get_semantic_segmentation())
@@ -39,8 +51,15 @@ def main():
     # canny_mask = bg_remover.get_canny_segmentation()
     # sobel_mask = bg_remover.get_sobel_segmentation()
     # hog_mask = bg_remover.get_hog_segmentation()
+    print("--------Final mask---------")
     final_mask = bg_remover.class_mask
     print(final_mask.shape)
+    if final_mask.ndim == 2:
+        print(type(final_mask[0,0]))
+    else:
+        print(type(final_mask[0,0,0]))
+    print(type(final_mask))
+    
     print(f"Max value in final_mask: {np.max(final_mask)}")
     print(f"Min value in final_mask: {np.min(final_mask)}")
 
