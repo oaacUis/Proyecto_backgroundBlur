@@ -4,7 +4,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from semanticSegmentationClass import DeepLabModel
+from .semanticSegmentationClass import DeepLabModel
 from sklearn.cluster import KMeans
 from skimage.feature import hog
 from scipy.signal import convolve2d
