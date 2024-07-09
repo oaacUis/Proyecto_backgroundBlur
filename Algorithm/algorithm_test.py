@@ -4,7 +4,15 @@ import matplotlib.pyplot as plt
 
 def main():
     # Image route
-    image = 'img19_retrato.jpeg'
+    #image = 'img19_retrato.jpeg'
+    #image = 'img12_urbano.jpeg'
+    #image = 'img13_urbano.jpeg' # No funciona, cvt color 
+    #image = 'img14_campo.jpeg' # No distorsiona el fondo
+    #image = 'img15_campo.jpeg' #No funciona
+    #image = 'img16_campo.jpeg' # No funciona, cvt color
+    #image = 'img17_retrato.webp' #No distorsiona el fondo
+    #image = 'img18_retrato.jpeg' #No funciona, todo distorsionado 
+    image = 'img20_retrato.jpeg' 
     img_route = os.path.join(os.path.dirname(__file__),
                              'test_images',
                              image)
@@ -24,10 +32,12 @@ def main():
     
     # Show the segmentation mask
     # This assumes there's a method show_image in BackgroundRemover and an attribute for the mask
-    bg_remover.show_image(bg_remover.get_semantic_segmentation())
-    bg_remover.show_image(bg_remover.get_sobel_segmentation())
+    #bg_remover.show_image(bg_remover.get_semantic_segmentation())
+    #bg_remover.show_image(bg_remover.get_sobel_segmentation())
     # Obtener la máscara de segmentación semántica
     canny_mask = bg_remover.get_canny_segmentation()
+    sobel_mask = bg_remover.get_sobel_segmentation()
+    hog_mask = bg_remover.get_hog_segmentation()
     final_mask = bg_remover.class_mask
     # Graficar la máscara de segmentación semántica
     plt.imshow(final_mask, cmap='gray')  # Asumiendo que es una imagen en escala de grises

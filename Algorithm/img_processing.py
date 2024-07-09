@@ -85,60 +85,66 @@ class BackgroundRemover:
         return semanticMask_Resized
 
     def get_texture_segmentation(self):
-        f = self.image_rgb
-        f = cv2.cvtColor(f, cv2.COLOR_RGB2GRAY)
+        """
+        Performs texture segmentation on the input image by calculating
+        the local deviation from the mean pixel value.
+
+        Returns:
+            numpy.ndarray: The binary segmentation mask.
+        """
+        # Convert the input RGB image to grayscale
+        f = cv2.cvtColor(self.image_rgb, cv2.COLOR_RGB2GRAY)
+        
+        # Normalize the grayscale image to the range [0, 1]
         f = f.astype(np.float32) / 255.0
-
-    
-
-        # mean
+        
+        # Define the kernel for the mean filter
         radius = 3
-        kernel_mean = np.ones((radius, radius))
-        kernel_mean = kernel_mean / kernel_mean.size
+        kernel_mean = np.ones((radius, radius)) / (radius * radius)
+        
+        # Apply mean filter to the image
         mean = convolve2d(f, kernel_mean, mode="same")
-
-        # variance
-        sq_f = np.power(f, 2)
-        sq_f = convolve2d(sq_f, kernel_mean, mode="same")
+        
+        # Calculate the variance
+        sq_f = convolve2d(np.power(f, 2), kernel_mean, mode="same")
         sq_mean = np.power(mean, 2)
         variance = sq_f - sq_mean
-
-        # deviation
+        
+        # Calculate the deviation
         deviation = np.sqrt(np.abs(variance))
         deviation = deviation / np.max(np.abs(deviation))
-
-        mask = deviation
+        
+        # Create binary mask by thresholding the deviation
         th_s = 0.1
-        s_umbralizada = mask > th_s
-
-        # Define el elemento estructurante para la dilatación
-        kernel = np.ones((3, 3), np.uint8)  # Puedes ajustar el tamaño del kernel según sea necesario
-        # Aplica la dilatación
+        s_umbralizada = deviation > th_s
+        
+        # Invert the binary mask
         a = ~s_umbralizada
-        #eroded_mask = cv2.erode(a, kernel, iterations=1)
-        #dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=1)  # Puedes ajustar el número de iteraciones
 
         return a
+    
     def get_canny_segmentation(self):
+        """
+        Performs edge detection segmentation on the input image using the Canny edge detector.
+
+        Returns:
+            numpy.ndarray: The binary segmentation mask.
+        """
+        # Convert the input RGB image to grayscale
         image = self.image_rgb
-        # Convertir la imagen a escala de grises
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = gray.astype(np.uint8)
 
-        # Aplicar el detector de bordes de Canny
+        # Apply the Canny edge detector
         edges = cv2.Canny(gray, threshold1=50, threshold2=150)
 
-        # Crear una máscara binaria a partir de los bordes detectados
-        mask = edges
-        mask[mask > 0] = 255
-        th_s = 0.1
-        mask[mask > th_s] = 1
-        mask[mask <= th_s] = 0
-        s_umbralizada = mask>th_s
-        a = ~s_umbralizada
+        # Create a binary mask from the detected edges
+        mask = np.zeros_like(edges)
+        mask[edges > 0] = 1
 
         return mask
-    def get_hog_segmentation(image_path):
+    
+    def get_hog_segmentation(self):
         """
         This function segments an image using HOG (Histogram of Oriented Gradients)
         and returns a binary mask.
@@ -151,11 +157,11 @@ class BackgroundRemover:
             numpy.ndarray: A binary mask representing the segmented image.
         """
         # Read image
-        img = image_path
+        img = self.image_rgb
 
         # Calculate HOG features
         fd, hog_image = hog(img, orientations=9, pixels_per_cell=(8, 8),
-                            cells_per_block=(2, 2), visualize=True, multichannel=True)
+                            cells_per_block=(2, 2), visualize=True, channel_axis=-1)
 
         # Apply thresholding for binarization
         threshold=20
@@ -164,45 +170,56 @@ class BackgroundRemover:
         mask[mask >= threshold] = 255
 
         return mask
-    def get_sobel_segmentation(image):
-        # Convertir la imagen a escala de grises
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    def get_sobel_segmentation(self):
+        """
+        Performs edge detection segmentation on the input image using the Sobel operator.
 
-        # Aplicar un filtro de suavizado (opcional)
+        Args:
+            image (numpy.ndarray): Input image in RGB format.
+
+        Returns:
+            numpy.ndarray: The binary segmentation mask.
+        """
+        # Convert the input image to grayscale
+        image = cv2.cvtColor(self.image_rgb, cv2.COLOR_RGB2GRAY)
+
+        # Apply a Gaussian blur to the image to reduce noise (optional)
         image = cv2.GaussianBlur(image, (5, 5), 0)
 
-        # Normalizar la imagen
+        # Normalize the image to the range [0, 1]
         image = image.astype(np.float32) / 255.0
 
-        # Calcular los gradientes Sobel
+        # Calculate the Sobel gradients in the X and Y directions
         sobelX = cv2.Sobel(image, cv2.CV_64F, 1, 0)
         sobelY = cv2.Sobel(image, cv2.CV_64F, 0, 1)
 
-        # Calcular la magnitud del gradiente
+        # Calculate the gradient magnitude
         sobelCombined = np.sqrt(sobelX**2 + sobelY**2)
 
-        # Normalizar y convertir a uint8
+        # Normalize the gradient magnitude and convert it to uint8
         sobelCombined = np.uint8(255 * sobelCombined / np.max(sobelCombined))
 
-        # Aplicar un umbral para crear una máscara binaria
+        # Apply a threshold to create a binary mask
         _, mask = cv2.threshold(sobelCombined, 50, 255, cv2.THRESH_BINARY)
 
         return mask
     
     def get_final_mask(self, mask_dict: dict):
-        """_summary_
+        """
+        Combines multiple segmentation masks using KMeans clustering.
 
         Args:
-            mask_dict (dict): It's a dictionary with key:value pairs
-            where key is the name of the mask and value is a bool value
-            if is going to be used or not. ex:
-            mask_list = {   "get_semantic_segmentation": True,
-                            "get_ORB_segmentation": False, ...}
+            mask_dict (dict): A dictionary where the key is the mask name
+                            and the value is a bool indicating whether
+                            the mask should be used.
+                            Example: {"get_semantic_segmentation": True, "get_ORB_segmentation": False, ...}
 
         Returns:
-            np.array: Final mask after Kmeans algorithm
+            np.array: Final binary mask after KMeans clustering.
         """
         m, n, o = self.image.shape
+        self.mask_list = []
 
         for method, use_mask in mask_dict.items():
             if use_mask:
@@ -210,32 +227,34 @@ class BackgroundRemover:
                     mask = self.get_semantic_segmentation().astype(np.float32)
                 elif method == "get_ORB_segmentation":
                     # mask = self.get_ORB_segmentation()
-                    mask = np.zeros(shape=(self.image_shape[0],
-                                           self.image_shape[1]))
+                    mask = np.zeros(shape=(self.image_shape[0], self.image_shape[1]))
                 elif method == "get_texture_segmentation":
-                    mask = self.get_texture_segmentation() *0.1
+                    mask = self.get_texture_segmentation() * 0.1
                 elif method == "get_canny_segmentation":
-                    mask = self.get_canny_segmentation() *0.1
+                    mask = self.get_canny_segmentation() * 0.1
                 elif method == "get_hog_segmentation":
-                    mask = self.get_hog_segmentation() 
+                    mask = self.get_hog_segmentation() * 0.001
                 elif method == "get_sobel_segmentation":
-                    mask = self.get_sobel_segmentation(self.image) 
+                    mask = self.get_sobel_segmentation() * 0.0025
+
                 self.mask_list.append(mask.reshape(m * n, 1))
 
+        # Stack all masks horizontally
         X = np.hstack(tuple(self.mask_list))
-        print("Kmeans shape: ", X.shape)
+        print("KMeans shape: ", X.shape)
+
+        # Apply KMeans clustering
         final_mask = KMeans(n_clusters=2, n_init="auto").fit(X)
-        # centers = final_mask.cluster_centers_
         labels = final_mask.labels_
 
-        # Verificar si la clase mas común corresponde al fondo o al objeto
-        if labels[-1] == 0:
-            # Intercambiar etiquetas
-            labels = np.where(labels == 0, 1, 0)
+        # Verify if the most common class corresponds to the background or the object
+        if np.sum(labels) > len(labels) / 2:
+            # If the majority is foreground, invert labels
+            labels = 1 - labels
 
-        self.class_mask = labels.reshape(m, n)
-        # return class_mask
-
+        self.class_mask = ~labels.reshape(m, n)
+        return self.class_mask
+    
     def apply_final_mask(self, blur_type="gaussian", kernel_size=5):
         """
         Applies the final mask to the image.
