@@ -10,7 +10,6 @@ from skimage.feature import hog
 from scipy.signal import convolve2d
 import os
 import sys
-from pyramidFunctions import imblend
 
 
 class BackgroundRemover:
@@ -118,7 +117,6 @@ class BackgroundRemover:
         # dilated_mask = cv2.dilate(eroded_mask, kernel, iterations=1)  # Puedes ajustar el número de iteraciones
 
         return a
-
     def get_canny_segmentation(self):
         image = self.image_rgb
         # Convertir la imagen a escala de grises
@@ -189,33 +187,6 @@ class BackgroundRemover:
 
         return mask
 
-    def get_sobel_segmentation(self):
-        image = self.image_rgb
-
-        # Convertir la imagen a escala de grises
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Aplicar un filtro de suavizado (opcional)
-        image = cv2.GaussianBlur(image, (5, 5), 0)
-
-        # Normalizar la imagen
-        image = image.astype(np.float32) / 255.0
-
-        # Calcular los gradientes Sobel
-        sobelX = cv2.Sobel(image, cv2.CV_64F, 1, 0)
-        sobelY = cv2.Sobel(image, cv2.CV_64F, 0, 1)
-
-        # Calcular la magnitud del gradiente
-        sobelCombined = np.sqrt(sobelX**2 + sobelY**2)
-
-        # Normalizar y convertir a uint8
-        sobelCombined = np.uint8(255 * sobelCombined / np.max(sobelCombined))
-
-        # Aplicar un umbral para crear una máscara binaria
-        _, mask = cv2.threshold(sobelCombined, 50, 255, cv2.THRESH_BINARY)
-
-        return mask
-
     def get_final_mask(self, mask_dict: dict):
         """_summary_
 
@@ -243,13 +214,10 @@ class BackgroundRemover:
                     mask = self.get_texture_segmentation() * 0.1
                 elif method == "get_canny_segmentation":
                     mask = self.get_canny_segmentation() *0.1
-<<<<<<< HEAD
-=======
                 elif method == "get_hog_segmentation":
                     mask = self.get_hog_segmentation() 
                 elif method == "get_sobel_segmentation":
                     mask = self.get_sobel_segmentation(self.image) 
->>>>>>> prueba
                 self.mask_list.append(mask.reshape(m * n, 1))
 
         X = np.hstack(tuple(self.mask_list))
@@ -266,7 +234,6 @@ class BackgroundRemover:
             labels = np.where(labels == 0, 1, 0)
 
         self.class_mask = labels.reshape(m, n)
-        print("Class mask max value: ", np.max(self.class_mask))
         # return class_mask
 
     def apply_final_mask(self, blur_type="gaussian", kernel_size=5):
