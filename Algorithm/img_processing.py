@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from semanticSegmentationClass import DeepLabModel
 from sklearn.cluster import KMeans
+from skimage.feature import hog
 from scipy.signal import convolve2d
 import os
 import sys
@@ -137,6 +138,56 @@ class BackgroundRemover:
         a = ~s_umbralizada
 
         return mask
+    def get_hog_segmentation(image_path):
+        """
+        This function segments an image using HOG (Histogram of Oriented Gradients)
+        and returns a binary mask.
+
+        Args:
+            image_path (str): Path to the image file.
+            threshold (float, optional): Threshold value for binarization. Defaults to 0.1.
+
+        Returns:
+            numpy.ndarray: A binary mask representing the segmented image.
+        """
+        # Read image
+        img = image_path
+
+        # Calculate HOG features
+        fd, hog_image = hog(img, orientations=9, pixels_per_cell=(8, 8),
+                            cells_per_block=(2, 2), visualize=True, multichannel=True)
+
+        # Apply thresholding for binarization
+        threshold=20
+        mask = hog_image
+        mask[mask < threshold] = 0
+        mask[mask >= threshold] = 255
+
+        return mask
+    def get_sobel_segmentation(image):
+        # Convertir la imagen a escala de grises
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Aplicar un filtro de suavizado (opcional)
+        image = cv2.GaussianBlur(image, (5, 5), 0)
+
+        # Normalizar la imagen
+        image = image.astype(np.float32) / 255.0
+
+        # Calcular los gradientes Sobel
+        sobelX = cv2.Sobel(image, cv2.CV_64F, 1, 0)
+        sobelY = cv2.Sobel(image, cv2.CV_64F, 0, 1)
+
+        # Calcular la magnitud del gradiente
+        sobelCombined = np.sqrt(sobelX**2 + sobelY**2)
+
+        # Normalizar y convertir a uint8
+        sobelCombined = np.uint8(255 * sobelCombined / np.max(sobelCombined))
+
+        # Aplicar un umbral para crear una máscara binaria
+        _, mask = cv2.threshold(sobelCombined, 50, 255, cv2.THRESH_BINARY)
+
+        return mask
     
     def get_final_mask(self, mask_dict: dict):
         """_summary_
@@ -165,6 +216,10 @@ class BackgroundRemover:
                     mask = self.get_texture_segmentation() *0.1
                 elif method == "get_canny_segmentation":
                     mask = self.get_canny_segmentation() *0.1
+                elif method == "get_hog_segmentation":
+                    mask = self.get_hog_segmentation() 
+                elif method == "get_sobel_segmentation":
+                    mask = self.get_sobel_segmentation(self.image) *0.1
                 self.mask_list.append(mask.reshape(m * n, 1))
 
         X = np.hstack(tuple(self.mask_list))

@@ -15,7 +15,9 @@ def main():
     bg_remover = BackgroundRemover()
     bg_remover.load_image(img_route)
     # bg_remover.show_image(bg_remover.image_rgb)
-    mask_list = {"get_semantic_segmentation": True, "get_texture_segmentation": True, "get_canny_segmentation": True}
+    mask_list = {"get_semantic_segmentation": True, 
+                 "get_texture_segmentation": True, "get_canny_segmentation": True, 
+                 "get_sobel_segmentation": True, "get_hog_segmentation": True}
     bg_remover.get_final_mask(mask_dict=mask_list)
     
     # Assuming get_final_mask updates an attribute with the mask, e.g., bg_remover.segmentation_mask
