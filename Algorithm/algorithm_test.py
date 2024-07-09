@@ -32,16 +32,16 @@ def main():
     bg_remover.show_image(bg_remover.modified_image)
     
     print("--------Semantic---------")
-    final_mask = bg_remover.get_semantic_segmentation()
-    print(final_mask.shape)
-    if final_mask.ndim == 2:
-        print(type(final_mask[0,0]))
+    mask_used = bg_remover.get_semantic_segmentation()
+    print(mask_used.shape)
+    if mask_used.ndim == 2:
+        print(type(mask_used[0,0]))
     else:
-        print(type(final_mask[0,0,0]))
-    print(type(final_mask))
+        print(type(mask_used[0,0,0]))
+    print(type(mask_used))
     
-    print(f"Max value in final_mask: {np.max(final_mask)}")
-    print(f"Min value in final_mask: {np.min(final_mask)}")
+    print(f"Max value in mask: {np.max(mask_used)}")
+    print(f"Min value in mask: {np.min(mask_used)}")
     
     # Show the segmentation mask
     # This assumes there's a method show_image in BackgroundRemover and an attribute for the mask
@@ -52,7 +52,7 @@ def main():
     # sobel_mask = bg_remover.get_sobel_segmentation()
     # hog_mask = bg_remover.get_hog_segmentation()
     print("--------Final mask---------")
-    final_mask = bg_remover.class_mask
+    final_mask = bg_remover.normalized_mask
     print(final_mask.shape)
     if final_mask.ndim == 2:
         print(type(final_mask[0,0]))
@@ -62,12 +62,14 @@ def main():
     
     print(f"Max value in final_mask: {np.max(final_mask)}")
     print(f"Min value in final_mask: {np.min(final_mask)}")
-
+    
+    
     # Graficar la máscara de segmentación semántica
     plt.imshow(final_mask, cmap='gray')  # Asumiendo que es una imagen en escala de grises
-    plt.title('Máscara final aplicada')
+    plt.title('Máscara aplicada')
     plt.axis('off')  # Omitir los ejes para una visualización más limpia
     plt.show()
+    
 
     return 0
 

@@ -206,29 +206,26 @@ class BackgroundRemover:
         _, mask = cv2.threshold(sobelCombined, 50, 255, cv2.THRESH_BINARY)
 
         return mask
-    
     def get_final_mask(self, mask_dict: dict):
-        """
-        Combines multiple segmentation masks using KMeans clustering.
+        """_summary_
 
         Args:
-            mask_dict (dict): A dictionary where the key is the mask name
-                            and the value is a bool indicating whether
-                            the mask should be used.
-                            Example: {"get_semantic_segmentation": True, "get_ORB_segmentation": False, ...}
+            mask_dict (dict): It's a dictionary with key:value pairs
+            where key is the name of the mask and value is a bool value
+            if is going to be used or not. ex:
+            mask_list = {   "get_semantic_segmentation": True,
+                            "get_ORB_segmentation": False, ...}
 
         Returns:
-            np.array: Final binary mask after KMeans clustering.
+            np.array: Final mask after Kmeans algorithm
         """
         m, n, o = self.image.shape
-        self.mask_list = []
 
         for method, use_mask in mask_dict.items():
             if use_mask:
                 if method == "get_semantic_segmentation":
-                    mask = self.get_semantic_segmentation()
+                    mask = self.get_semantic_segmentation() * 0.01
                 elif method == "get_ORB_segmentation":
-                    # mask = self.get_ORB_segmentation()
                     mask = np.zeros(shape=(self.image_shape[0], self.image_shape[1]))
                 elif method == "get_texture_segmentation":
                     mask = self.get_texture_segmentation() * 0.1
@@ -239,23 +236,31 @@ class BackgroundRemover:
                 elif method == "get_sobel_segmentation":
                     mask = self.get_sobel_segmentation() * 0.0025
 
+                # Verificar que el tipo de dato sea np.ndarray de tipo float32
+                if not isinstance(mask, np.ndarray) or mask.dtype != np.float32:
+                    print(f"Error: la máscara {method} no tiene formato numpy.ndarray de tipo float32")
+                    return None
+
                 self.mask_list.append(mask.reshape(m * n, 1))
 
-        # Stack all masks horizontally
         X = np.hstack(tuple(self.mask_list))
-        print("KMeans shape: ", X.shape)
-
-        # Apply KMeans clustering
+        print("Kmeans shape: ", X.shape)
         final_mask = KMeans(n_clusters=2, n_init="auto").fit(X)
+        # centers = final_mask.cluster_centers_
         labels = final_mask.labels_
 
-        # Verify if the most common class corresponds to the background or the object
-        if np.sum(labels) > len(labels) / 2:
-            # If the majority is foreground, invert labels
-            labels = 1 - labels
+        # Verificar si la clase mas común corresponde al fondo o al objeto
+        if labels[-1] == 1:
+            # Intercambiar etiquetas
+            labels = np.where(labels == 0, 1, 0)
 
-        self.class_mask = ~labels.reshape(m, n)
-        return self.class_mask
+        self.class_mask = labels.reshape(m, n)
+        
+        # Normalizar la salida para que los valores sean entre 0.0 y 1.0
+        self.normalized_mask = self.class_mask.astype(np.float32)
+        self.normalized_mask = (self.normalized_mask - self.normalized_mask.min()) / (self.normalized_mask.max() - self.normalized_mask.min())
+
+        return self.normalized_mask 
     
     def apply_final_mask(self, blur_type="gaussian", kernel_size=5):
         """
