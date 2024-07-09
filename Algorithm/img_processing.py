@@ -243,6 +243,13 @@ class BackgroundRemover:
                     mask = self.get_texture_segmentation() * 0.1
                 elif method == "get_canny_segmentation":
                     mask = self.get_canny_segmentation() *0.1
+<<<<<<< HEAD
+=======
+                elif method == "get_hog_segmentation":
+                    mask = self.get_hog_segmentation() 
+                elif method == "get_sobel_segmentation":
+                    mask = self.get_sobel_segmentation(self.image) 
+>>>>>>> prueba
                 self.mask_list.append(mask.reshape(m * n, 1))
 
         X = np.hstack(tuple(self.mask_list))

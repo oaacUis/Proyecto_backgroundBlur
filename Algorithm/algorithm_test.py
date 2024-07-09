@@ -24,8 +24,8 @@ def main():
 
     # Show the segmentation mask
     # This assumes there's a method show_image in BackgroundRemover and an attribute for the mask
-    bg_remover.show_image(bg_remover.get_semantic_segmentation(), map="gray")
-    # bg_remover.show_image(bg_remover.get_sobel_segmentation())
+    bg_remover.show_image(bg_remover.get_semantic_segmentation())
+    bg_remover.show_image(bg_remover.get_sobel_segmentation())
     # Obtener la máscara de segmentación semántica
     # canny_mask = bg_remover.get_canny_segmentation()
     # sobel_mask = bg_remover.get_sobel_segmentation()
