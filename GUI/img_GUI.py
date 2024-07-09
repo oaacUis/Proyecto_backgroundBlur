@@ -20,6 +20,7 @@ class ImageEditorApp(QMainWindow):
             self.setWindowIcon(QIcon(logo_pixmap))
 
         self.drawing = False
+        self.pencil_mode = False
         self.last_point = QPoint()
         self.brush_size = 3
         self.brush_color = Qt.black
@@ -121,11 +122,11 @@ class ImageEditorApp(QMainWindow):
     
     # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
     def apply_filters(self):
-    # Implementa la lógica para aplicar los filtros seleccionados
+        # Implementa la lógica para aplicar los filtros seleccionados
         pass
 
     def visualize_filters(self):
-    # Implementa la lógica para visualizar los filtros seleccionados
+        # Implementa la lógica para visualizar los filtros seleccionados
         pass
 
     def load_image(self):
@@ -162,10 +163,32 @@ class ImageEditorApp(QMainWindow):
         if color.isValid():
             self.brush_color = color
 
+    def select_brush_size(self):
+        size, ok = QInputDialog.getInt(self, "Seleccionar Tamaño del Pincel", "Tamaño del Pincel:", self.brush_size, 1, 50, 1)
+        if ok:
+            self.brush_size = size
+
     def use_pencil(self):
-        self.label_image.mousePressEvent = self.mouse_press
-        self.label_image.mouseMoveEvent = self.mouse_move
-        self.label_image.mouseReleaseEvent = self.mouse_release
+        self.pencil_mode = True
+        self.label_image.setCursor(QCursor(QPixmap("./GUI/icons/pencil.png").scaled(32, 32)))
+        self.select_brush_size()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self.pencil_mode:
+            self.last_point = event.pos() - self.label_image.pos()
+            self.drawing = True
+
+    def mouseMoveEvent(self, event):
+        if (event.buttons() & Qt.LeftButton) and self.drawing and self.pencil_mode:
+            painter = QPainter(self.label_image.pixmap())
+            painter.setPen(QPen(self.brush_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            painter.drawLine(self.last_point, event.pos() - self.label_image.pos())
+            self.last_point = event.pos() - self.label_image.pos()
+            self.label_image.update()
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.LeftButton and self.drawing and self.pencil_mode:
+            self.drawing = False
 
     def use_paint(self):
         pass  # Implementa funcionalidad de pintura
@@ -231,18 +254,19 @@ class ImageEditorApp(QMainWindow):
 
     def update_crop_preview(self):
         pixmap = self.label_image.pixmap()
-        if pixmap:
-            painter = QPainter(pixmap)
+        if (pixmap):
+            preview_pixmap = pixmap.copy()
+            painter = QPainter(preview_pixmap)
             painter.setPen(QPen(Qt.red, 1, Qt.SolidLine))
             if self.crop_shape == "Rectángulo":
                 painter.drawRect(self.crop_rect)
             elif self.crop_shape == "Elipse":
                 painter.drawEllipse(self.crop_rect)
-            self.label_image.setPixmap(pixmap)
+            self.label_image.setPixmap(preview_pixmap)
 
     def perform_crop(self):
         pixmap = self.label_image.pixmap()
-        if pixmap:
+        if (pixmap):
             if self.crop_shape == "Rectángulo":
                 cropped_pixmap = pixmap.copy(self.crop_rect.normalized())
             elif self.crop_shape == "Elipse":
@@ -259,28 +283,11 @@ class ImageEditorApp(QMainWindow):
                 painter = QPainter(cropped_pixmap)
                 painter.setCompositionMode(QPainter.CompositionMode_Source)
                 painter.drawPixmap(0, 0, pixmap)
-                painter.setCompositionMode(QPainter.CompositionMode_DestinationIn)
+                painter.setCompositionMode(QPainter.CompositionMode.DestinationIn)
                 painter.drawPixmap(0, 0, mask)
                 painter.end()
 
             self.label_image.setPixmap(cropped_pixmap)
-
-    def mouse_press(self, event):
-        if event.button() == Qt.LeftButton:
-            self.last_point = event.pos()
-            self.drawing = True
-
-    def mouse_move(self, event):
-        if (event.buttons() & Qt.LeftButton) & self.drawing:
-            painter = QPainter(self.label_image.pixmap())
-            painter.setPen(QPen(self.brush_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-            painter.drawLine(self.last_point, event.pos())
-            self.last_point = event.pos()
-            self.label_image.update()
-
-    def mouse_release(self, event):
-        if event.button() == Qt.LeftButton:
-            self.drawing = False
 
 class SplashScreen(QSplashScreen):
     def __init__(self, pixmap):
