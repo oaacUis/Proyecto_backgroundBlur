@@ -4,12 +4,14 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from .semanticSegmentationClass import DeepLabModel
 from sklearn.cluster import KMeans
 from skimage.feature import hog
 from scipy.signal import convolve2d
-import os
 import sys
+import os
+sys.path.append(os.path.dirname(os.path.realpath(__file__)))
+
+from semanticSegmentationClass import DeepLabModel
 
 
 class BackgroundRemover:
@@ -272,6 +274,8 @@ class BackgroundRemover:
         blurred_background = cv2.GaussianBlur(
             self.image_rgb, (kernel_size, kernel_size), cv2.BORDER_DEFAULT
         )
+        # print("Mask type: ", type(mask))
+        # print("background type: ", type(blurred_background))
         masked_image = blurred_background * mask + self.image_rgb * (1 - mask)
         self.modified_image = np.copy(masked_image)
         # print(self.modified_image.shape)

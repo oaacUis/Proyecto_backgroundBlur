@@ -1,7 +1,11 @@
-from PyQt5.QtWidgets import *
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtWidgets import QMainWindow, QLabel, QFileDialog, QAction
+from PyQt5.QtWidgets import QToolBar, QCheckBox, QGroupBox, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QPushButton, QProgressBar, QInputDialog
+from PyQt5.QtWidgets import QMessageBox, QColorDialog, QSplashScreen, QHBoxLayout
+from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtGui import QFont, QIcon
+from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen
+from Algorithm.img_processing import BackgroundRemover
 import cv2
 import sys
 import time
@@ -15,7 +19,7 @@ class ImageEditorApp(QMainWindow):
         self.setGeometry(100, 100, 800, 800)
 
         # Cargar y redimensionar el logo
-        logo_path = "./GUI/icons/logo.png"
+        logo_path = "./icons/logo.png"
         logo_pixmap = QPixmap(logo_path).scaled(
             64, 64, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
@@ -33,6 +37,16 @@ class ImageEditorApp(QMainWindow):
         self.currentTool = None
         self.counter = 0
         self.initUI()
+
+        # From BackgroundRemover
+        self.bg_remover = BackgroundRemover()
+        self.mask_list = {
+            "get_semantic_segmentation": True,
+            "get_texture_segmentation": False,
+            "get_canny_segmentation": False,
+            "get_sobel_segmentation": False,
+            "get_hog_segmentation": False,
+        }
 
     def initUI(self):
 
@@ -96,13 +110,25 @@ class ImageEditorApp(QMainWindow):
         option_group = QGroupBox("FILTROS")
         option_layout = QVBoxLayout()
 
-        options = ["Seg. Semántica", "Filtro 1", "Filtro 2", "Filtro 3", "Filtro 4"]
+        options = [
+            "Semantic Segmentation",
+            "ORB Segmentation",
+            "Filtro 2",
+            "Filtro 3",
+            "Filtro 4",
+        ]
         self.checkboxes = []
 
-        for option in options:
-            checkbox = QCheckBox(option)
-            self.checkboxes.append(checkbox)
-            option_layout.addWidget(checkbox)
+        self.semanticSegmentationCheckBox = QCheckBox("Semantic Segmentation", self)
+        option_layout.addWidget(self.semanticSegmentationCheckBox)
+        self.orbSegmentationCheckBox = QCheckBox("ORB Segmentation", self)
+        option_layout.addWidget(self.orbSegmentationCheckBox)
+        # Add more checkboxes as needed
+
+        # Connect checkboxes to their respective slot functions
+        self.semanticSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        self.orbSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        # Add connections for other checkboxes
 
         option_group.setLayout(option_layout)
         side_layout.addWidget(option_group)
@@ -129,16 +155,34 @@ class ImageEditorApp(QMainWindow):
         side_layout.addWidget(self.preview_label)
         self.side_section.setLayout(side_layout)
 
+    def updateMaskDict(self):
+        # Update the mask dictionary based on the checkboxes
+        self.mask_list["get_semantic_segmentation"] = (
+            self.semanticSegmentationCheckBox.isChecked()
+        )
+        self.mask_list["get_texture_segmentation"] = (
+            self.orbSegmentationCheckBox.isChecked()
+        )
+        # Update the other checkboxes as needed
+        print("Mask list: ", self.mask_list)
+
     # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
     def apply_filters(self):
-        # Implementa la lógica para aplicar los filtros seleccionados
-        # Implementa la lógica para aplicar los filtros seleccionados
-        pass
+        self.bg_remover.apply_final_mask()
+        pixmap = self.convert_cv_qt(self.bg_remover.modified_image, saveSize=True)
+        self.label_image.setPixmap(pixmap)
 
     def visualize_filters(self):
-        # Implementa la lógica para visualizar los filtros seleccionados
-        # Implementa la lógica para visualizar los filtros seleccionados
-        pass
+        print("Visualizing current mask from filters")
+        self.bg_remover.get_final_mask(self.mask_list)
+        self.appiled_mask = (
+            np.clip(self.bg_remover.class_mask, a_min=0, a_max=1) * 255
+        ) // 1
+        pixmap = self.convert_cv_qt(
+            self.appiled_mask, saveSize=False,
+            setResize=True, objetiveSize=(600, 300)
+        )
+        self.preview_label.setPixmap(pixmap)
 
     def load_image(self):
         file_dialog = QFileDialog(self)
@@ -148,17 +192,15 @@ class ImageEditorApp(QMainWindow):
 
         if file_dialog.exec_():
             file_name = file_dialog.selectedFiles()[0]
-            #pixmap = QPixmap(file_name)
-            #pixmap = QPixmap(700, 600)  # Adjust size as needed
-            #pixmap.fill(Qt.blue)
+            # pixmap = QPixmap(file_name)
+            self.bg_remover.load_image(file_name)
             pixmap = self.convert_cv_qt(file_name, saveSize=True)
             self.label_image.setPixmap(pixmap)
             print("New image to: ", self.label_image.pixmap())
-            # self.label_image.setScaledContents(True) # Esto no funciona adecuadamente
+            # Esto no funciona adecuadamente
+            # self.label_image.setScaledContents(True)
             # print("New image to (After scale): ", self.label_image.pixmap())
             self.reset_meths()
-            # self.main_layout.update()
-            #main_layout
 
     def save_image(self):
         pixmap = self.label_image.pixmap()
@@ -173,10 +215,10 @@ class ImageEditorApp(QMainWindow):
                 # Opcion 1 - Guardar con el tamaño original
                 a = self.convert_qt_cv(pixmap, setResize=True)
                 pixmap = self.convert_cv_qt(a, setResize=False)
-                
+
                 # Opcion 2 - Guardar con el tamaño actual de (700, 600)
                 # pixmap = self.label_image.pixmap()
-                
+
                 if pixmap.save(save_path):
                     QMessageBox.information(
                         self, "Guardar Imagen", "Imagen guardada exitosamente."
@@ -202,7 +244,15 @@ class ImageEditorApp(QMainWindow):
             self.brush_color = color
 
     def select_brush_size(self):
-        size, ok = QInputDialog.getInt(self, "Seleccionar Tamaño del Pincel", "Tamaño del Pincel:", self.brush_size, 1, 50, 1)
+        size, ok = QInputDialog.getInt(
+            self,
+            "Seleccionar Tamaño del Pincel",
+            "Tamaño del Pincel:",
+            self.brush_size,
+            1,
+            50,
+            1,
+        )
         if ok:
             self.brush_size = size
 
@@ -222,12 +272,24 @@ class ImageEditorApp(QMainWindow):
             self.lastPoint = localPos
 
     def mouseMoveEvent(self, event):
-        if (event.buttons() & Qt.LeftButton) and self.drawing and self.currentTool == "pencil":
+        if (
+            (event.buttons() & Qt.LeftButton)
+            and self.drawing
+            and self.currentTool == "pencil"
+        ):
             print("Mouse is moving...")
             pixmap = self.label_image.pixmap()
             print(self.label_image.pixmap())
             painter = QPainter(pixmap)
-            painter.setPen(QPen(self.brush_color, self.brush_size, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            painter.setPen(
+                QPen(
+                    self.brush_color,
+                    self.brush_size,
+                    Qt.SolidLine,
+                    Qt.RoundCap,
+                    Qt.RoundJoin,
+                )
+            )
             # Convert global position to local position relative to label_image
             localPos = self.label_image.mapFromGlobal(event.globalPos())
             painter.drawLine(self.lastPoint, localPos)
@@ -235,7 +297,11 @@ class ImageEditorApp(QMainWindow):
             self.label_image.setPixmap(pixmap)
 
     def mouseReleaseEvent(self, event):
-        if event.button() == Qt.LeftButton and self.drawing and self.currentTool == "pencil":
+        if (
+            event.button() == Qt.LeftButton
+            and self.drawing
+            and self.currentTool == "pencil"
+        ):
             print("Mouse released")
             self.drawing = False
             # self.label_image.setPixmap(self.label_image.pixmap())
@@ -245,29 +311,38 @@ class ImageEditorApp(QMainWindow):
                 self.save_image()
 
     # To convert from opencv to QPixmap
-    def convert_cv_qt(self, cv_img, saveSize=False, setResize=True):
+    def convert_cv_qt(
+        self, cv_img, saveSize=False, setResize=True, objetiveSize=(700, 600)
+    ):
         """Convert from an opencv image to QPixmap"""
         if isinstance(cv_img, np.ndarray):
             # cv_img is a numpy array
             self.rgb_image = cv_img.astype(np.uint8)
+            if len(self.rgb_image.shape) == 2:
+                self.rgb_image = cv2.cvtColor(self.rgb_image, cv2.COLOR_GRAY2RGB)
         else:
             image = cv2.imread(cv_img)
             self.rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        if saveSize:    # Save the original size of the image
+
+        if saveSize:  # Save the original size of the image
             self.original_image_shape = self.rgb_image.shape
-        
-        if setResize:   # Resize the image to a fixed size
-            self.rgb_image = cv2.resize(self.rgb_image, (700, 600))
-        
+
+        if setResize:  # Resize the image to a fixed size
+            self.rgb_image = cv2.resize(self.rgb_image, objetiveSize)
+
         h, w, ch = self.rgb_image.shape
         bytes_per_line = ch * w
-        convert_to_Qt_format = QImage(self.rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        # p = convert_to_Qt_format.scaled(700, 600, Qt.KeepAspectRatio) # En caso de querer escalar la imagen QT
+        convert_to_Qt_format = QImage(
+            self.rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888
+        )
+        # En caso de querer escalar la imagen QT
+        # p = convert_to_Qt_format.scaled(700, 600, Qt.KeepAspectRatio)
         p = convert_to_Qt_format
         return QPixmap.fromImage(p)
-    
-    def convert_qt_cv(self, qt_img, setResize=False): # To convert from QPixmap to opencv
+
+    def convert_qt_cv(
+        self, qt_img, setResize=False
+    ):  # To convert from QPixmap to opencv
         """Convert from a QPixmap to an opencv image"""
         qimage = qt_img.toImage()
         if qimage.format() != QImage.Format_RGB888:
@@ -276,9 +351,13 @@ class ImageEditorApp(QMainWindow):
         b.setsize(qimage.byteCount())
         stride = qimage.bytesPerLine()
         # cv_img = np.array(b).reshape(qimage.height(), qimage.width(), 3)
-        cv_img = np.frombuffer(b, dtype=np.uint8).reshape((qimage.height(), stride//3, 3))
+        cv_img = np.frombuffer(b, dtype=np.uint8).reshape(
+            (qimage.height(), stride // 3, 3)
+        )
         if setResize:
-            cv_img = cv2.resize(cv_img, (self.original_image_shape[1], self.original_image_shape[0]))
+            cv_img = cv2.resize(
+                cv_img, (self.original_image_shape[1], self.original_image_shape[0])
+            )
         return cv_img
 
 
