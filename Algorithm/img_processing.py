@@ -282,3 +282,12 @@ class BackgroundRemover:
         masked_image = blurred_background * mask + self.image_rgb * (1 - mask)
         self.modified_image = np.copy(masked_image)
         # print(self.modified_image.shape)
+
+"""
+Tareas Pendientess:
+- Estandarizar las salidas de las funciones para obtener máscaras
+- Comprobar el dato de entrada y salida del kmeans
+- Testear las mascaras de segmentación y la mascara final
+- Reimplementar el bending usando piramides
+- Recordar que el class_mask debe ser un numpy array de tipo float32 con valores 0.0 a 1.0
+"""
