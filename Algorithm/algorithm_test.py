@@ -8,7 +8,8 @@ os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 def main():
     # Image route
-    image = "img19_retrato.jpeg"
+    #image = "Brayan_8.jpg"
+    image = "img20_retrato.jpeg"
     img_route = os.path.join(os.path.dirname(__file__), "test_images", image)
 
     # Use example
@@ -29,7 +30,7 @@ def main():
     plt.imshow(bg_remover.modified_image),plt.axis("off"), plt.title("Imagen final"),plt.show()
 
     print("--------HOG---------")
-    mask_used = bg_remover.get_hog_segmentation()
+    mask_used = bg_remover.get_canny_segmentation()
     print(mask_used.shape)
     if mask_used.ndim == 2:
         print(type(mask_used[0,0]))
@@ -49,7 +50,7 @@ def main():
     # sobel_mask = bg_remover.get_sobel_segmentation()
     # hog_mask = bg_remover.get_hog_segmentation()
     print("--------Final mask---------")
-    final_mask = bg_remover.class_mask
+    final_mask = bg_remover.get_canny_segmentation()
     print(final_mask.shape)
     if final_mask.ndim == 2:
         print(type(final_mask[0,0]))
