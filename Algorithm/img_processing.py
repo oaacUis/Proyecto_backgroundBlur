@@ -225,6 +225,7 @@ class BackgroundRemover:
         Returns:
             np.array: Final mask after Kmeans algorithm
         """
+        self.mask_list = []
         m, n, _ = self.image.shape
 
         for method, use_mask in mask_dict.items():
