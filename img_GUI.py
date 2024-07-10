@@ -120,15 +120,30 @@ class ImageEditorApp(QMainWindow):
         option_layout.addWidget(self.semanticSegmentationCheckBox)
         
         # Filtro 2: Segmentación de texturas
-        self.orbSegmentationCheckBox = QCheckBox("ORB Segmentation", self)
-        option_layout.addWidget(self.orbSegmentationCheckBox)
+        self.textureSegmentationCheckBox = QCheckBox("Texture Segmentation", self)
+        option_layout.addWidget(self.textureSegmentationCheckBox)
+
+        # Filtro 3: Segmentación de bordes con Canny
+        self.cannySegmentationCheckBox = QCheckBox("Canny Segmentation", self)
+        option_layout.addWidget(self.cannySegmentationCheckBox)
+
+        # Filtro 4: Segmentación de bordes con Sobel
+        self.sobelSegmentationCheckBox = QCheckBox("Sobel Segmentation", self)
+        option_layout.addWidget(self.sobelSegmentationCheckBox)
+
+        # Filtro 5: Segmentación de bordes con HOG
+        self.hogSegmentationCheckBox = QCheckBox("HOG Segmentation", self)
+        option_layout.addWidget(self.hogSegmentationCheckBox)
+
         # Add more checkboxes as needed ...
 
         # Connect checkboxes to their respective slot functions
         self.semanticSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
-        self.orbSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
-        #self.cannySegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
-        #self.sobelSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        self.textureSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        self.cannySegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        self.sobelSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+        self.hogSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
+
         
         # Add connections for other checkboxes
 
@@ -163,7 +178,16 @@ class ImageEditorApp(QMainWindow):
             self.semanticSegmentationCheckBox.isChecked()
         )
         self.mask_list["get_texture_segmentation"] = (
-            self.orbSegmentationCheckBox.isChecked()
+            self.textureSegmentationCheckBox.isChecked()
+        )
+        self.mask_list["get_canny_segmentation"] = (
+            self.cannySegmentationCheckBox.isChecked()
+        )
+        self.mask_list["get_sobel_segmentation"] = (
+            self.sobelSegmentationCheckBox.isChecked()
+        )
+        self.mask_list["get_hog_segmentation"] = (
+            self.hogSegmentationCheckBox.isChecked()
         )
         # Update the other checkboxes as needed
         print("Mask list: ", self.mask_list)
