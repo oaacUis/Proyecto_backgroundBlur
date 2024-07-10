@@ -24,6 +24,8 @@ class BackgroundRemover:
         self.image = cv2.imread(image_path)
         self.image_rgb = cv2.cvtColor(self.image, cv2.COLOR_BGR2RGB)
         self.image_shape = self.image.shape
+        n, m, _ = self.image.shape
+        self.class_mask = np.zeros((n, m)).astype(np.float32)
 
     def show_image(self, image, map=None):
         plt.imshow(image, cmap=map)
@@ -241,10 +243,6 @@ class BackgroundRemover:
             if use_mask:
                 if method == "get_semantic_segmentation":
                     mask = self.get_semantic_segmentation()
-                elif method == "get_ORB_segmentation":
-                    # mask = self.get_ORB_segmentation()
-                    mask = np.zeros(shape=(self.image_shape[0],
-                                           self.image_shape[1]))
                 elif method == "get_texture_segmentation":
                     mask = self.get_texture_segmentation() * 0.1
                 elif method == "get_canny_segmentation":
