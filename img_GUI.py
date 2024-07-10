@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import QMainWindow, QLabel, QFileDialog, QAction
 from PyQt5.QtWidgets import QToolBar, QCheckBox, QGroupBox, QVBoxLayout
 from PyQt5.QtWidgets import QWidget, QPushButton, QProgressBar, QInputDialog
-from PyQt5.QtWidgets import QMessageBox, QColorDialog, QSplashScreen, QHBoxLayout
+from PyQt5.QtWidgets import QMessageBox, QColorDialog, QSplashScreen
+from PyQt5.QtWidgets import QHBoxLayout, QLineEdit
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen
@@ -148,8 +149,19 @@ class ImageEditorApp(QMainWindow):
         self.sobelSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
         self.hogSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
 
+        # Initialize the QLineEdit for Gaussian Blur value input
+        self.gaussianBlurValueInput = QLineEdit(self)
+        self.gaussianBlurValueInput.setPlaceholderText("Gaussian Blur Value")
         
-        # Add connections for other checkboxes
+        self.checkGaussianBlurValueButton = QPushButton("Set", self)
+        self.checkGaussianBlurValueButton.clicked.connect(self.checkGaussianBlurValue)
+        
+        self.gaussianBlurLayout = QHBoxLayout()
+        self.gaussianBlurLayout.addWidget(self.gaussianBlurValueInput)
+        self.gaussianBlurLayout.addWidget(self.checkGaussianBlurValueButton)
+        option_layout.addLayout(self.gaussianBlurLayout)
+        
+        # side_layout.addWidget(apply_button)
 
         option_group.setLayout(option_layout)
         side_layout.addWidget(option_group)
@@ -198,7 +210,10 @@ class ImageEditorApp(QMainWindow):
 
     # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
     def apply_filters(self):
+        print("Applying filters...")
+        # self.bg_remover.get_final_mask(mask_dict=self.mask_list)
         self.bg_remover.apply_final_mask()
+        print("Final mask already obtained")
         k = self.bg_remover.modified_image*255
         k = k.astype(np.uint8)
         print("Result mask shape from apply", k.shape)
@@ -225,6 +240,18 @@ class ImageEditorApp(QMainWindow):
         # canvas = QPixmap(600, 300)  # Adjust size as needed
         # canvas.fill(Qt.red)
         self.preview_label.setPixmap(self.pixmap_mask)
+
+    def checkGaussianBlurValue(self):
+        value = self.gaussianBlurValueInput.text()
+        try:
+            value = int(value)
+            if value <= 0:
+                raise ValueError("The value must be positive")
+            # Value is valid, you can use it for setting the Gaussian Blur value
+            print(f"Valid Gaussian Blur value: {value}")
+            self.bg_remover.set_GaussianBlurValue(value)
+        except ValueError as e:
+            QMessageBox.warning(self, "Invalid Value", str(e))
 
     def load_image(self):
         file_dialog = QFileDialog(self)

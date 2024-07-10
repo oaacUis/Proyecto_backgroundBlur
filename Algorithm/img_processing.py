@@ -18,6 +18,7 @@ class BackgroundRemover:
     def __init__(self):
         self.mask_list = []
         self.class_mask = None
+        self.GaussianBlurValue = 5  # Default value
 
     def load_image(self, image_path):
         self.image = cv2.imread(image_path)
@@ -28,6 +29,14 @@ class BackgroundRemover:
         plt.imshow(image, cmap=map)
         plt.axis("off")
         plt.show()
+
+    def set_GaussianBlurValue(self, value):
+        if value <= 0:
+            raise ValueError("The Gaussian Blur value must be positive")
+        # Ensure the GaussianBlurValue is odd
+        if value % 2 == 0:
+            value += 1  # or value -= 1, depending on your preference
+        self.GaussianBlurValue = value
 
     def apply_blur(self, objective, blur_type="gaussian", kernel_size=5):
         if blur_type == "gaussian":
@@ -281,6 +290,7 @@ class BackgroundRemover:
             None
         """
         # mask = np.dstack((self.class_mask, self.class_mask, self.class_mask))
+        kernel_size = self.GaussianBlurValue
         blurred_background = cv2.GaussianBlur(
             self.image_rgb, (kernel_size, kernel_size), cv2.BORDER_DEFAULT
         )
