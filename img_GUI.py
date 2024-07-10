@@ -1,11 +1,7 @@
-from PyQt5.QtWidgets import QMainWindow, QLabel, QFileDialog, QAction
-from PyQt5.QtWidgets import QToolBar, QCheckBox, QGroupBox, QVBoxLayout
-from PyQt5.QtWidgets import QWidget, QPushButton, QProgressBar, QInputDialog
-from PyQt5.QtWidgets import QMessageBox, QColorDialog, QSplashScreen, QHBoxLayout
-from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QFont, QIcon
-from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen
-from Algorithm.img_processing import BackgroundRemover
+from PyQt5.QtWidgets import *
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+#from Algorithm.img_processing import BackgroundRemover
 import cv2
 import sys
 import time
@@ -32,6 +28,7 @@ class ImageEditorApp(QMainWindow):
 
         self.drawing = False
         self.pencil_mode = False
+        self.eraser_mode = False
         self.last_point = QPoint()
         self.brush_size = 20
         self.brush_color = Qt.black
@@ -40,13 +37,19 @@ class ImageEditorApp(QMainWindow):
         self.initUI()
 
         # From BackgroundRemover
-        self.bg_remover = BackgroundRemover()
-        self.mask_list = {
-            "get_semantic_segmentation": False,
-            "get_texture_segmentation": False,
-            "get_canny_segmentation": False,
-            "get_sobel_segmentation": False,
-            "get_hog_segmentation": False,
+        #self.bg_remover = BackgroundRemover()
+        #self.mask_list = {
+         #   "get_semantic_segmentation": False,
+          #  "get_texture_segmentation": False,
+          #  "get_canny_segmentation": False,
+           # "get_sobel_segmentation": False,
+          #  "get_hog_segmentation": False,
+        #}
+
+        # Diccionario para almacenar las rutas de los íconos
+        self.tool_icons = {
+            "pencil": QCursor(QPixmap("./GUI/icons/pencil.png").scaled(32, 32)),
+            # Agregar más herramientas según sea necesario
         }
 
     def initUI(self):
@@ -75,6 +78,10 @@ class ImageEditorApp(QMainWindow):
         pencil_button = QAction(QIcon(), "Lápiz", self)
         pencil_button.triggered.connect(self.use_pencil)
         toolbar_top.addAction(pencil_button)
+
+        eraser_button = QAction(QIcon(), "Borrador", self)
+        eraser_button.triggered.connect(self.use_eraser)
+        toolbar_top.addAction(eraser_button)
 
         # Área central para la imagen
         self.label_image = QLabel(self)
@@ -274,11 +281,27 @@ class ImageEditorApp(QMainWindow):
             self.brush_size = size
 
     def use_pencil(self):
+        self.eraser_mode = False
+        self.update_cursor("pencil")
+        self.pencil_mode = True
+        self.select_brush_size()
         if self.currentTool == "pencil":
             self.currentTool = None
         else:
             self.currentTool = "pencil"
             print("Current tool: Pencil")
+
+    def use_eraser(self):
+        self.pencil_mode = False
+        if self.currentTool == "eraser":
+            self.currentTool = None
+        else:
+            self.currentTool = "eraser"
+            print("Current tool: Eraser")
+
+    def update_cursor(self, tool):
+        if tool in self.tool_icons:
+            self.setCursor(self.tool_icons[tool])
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.currentTool == "pencil":
