@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import QMainWindow, QLabel, QFileDialog, QAction
 from PyQt5.QtWidgets import QToolBar, QCheckBox, QGroupBox, QVBoxLayout
 from PyQt5.QtWidgets import QWidget, QPushButton, QProgressBar, QInputDialog
-from PyQt5.QtWidgets import QMessageBox, QColorDialog, QSplashScreen, QHBoxLayout
+from PyQt5.QtWidgets import QMessageBox, QColorDialog, QSplashScreen
+from PyQt5.QtWidgets import QHBoxLayout, QLineEdit
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtGui import QPixmap, QImage, QPainter, QPen
@@ -76,6 +77,10 @@ class ImageEditorApp(QMainWindow):
         pencil_button.triggered.connect(self.use_pencil)
         toolbar_top.addAction(pencil_button)
 
+        eraser_button = QAction(QIcon(), "Borrador", self)
+        eraser_button.triggered.connect(self.use_eraser)
+        toolbar_top.addAction(eraser_button)
+
         # Área central para la imagen
         self.label_image = QLabel(self)
         self.label_image.setAlignment(Qt.AlignCenter)
@@ -144,8 +149,19 @@ class ImageEditorApp(QMainWindow):
         self.sobelSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
         self.hogSegmentationCheckBox.stateChanged.connect(self.updateMaskDict)
 
+        # Initialize the QLineEdit for Gaussian Blur value input
+        self.gaussianBlurValueInput = QLineEdit(self)
+        self.gaussianBlurValueInput.setPlaceholderText("Gaussian Blur Value")
         
-        # Add connections for other checkboxes
+        self.checkGaussianBlurValueButton = QPushButton("Set", self)
+        self.checkGaussianBlurValueButton.clicked.connect(self.checkGaussianBlurValue)
+        
+        self.gaussianBlurLayout = QHBoxLayout()
+        self.gaussianBlurLayout.addWidget(self.gaussianBlurValueInput)
+        self.gaussianBlurLayout.addWidget(self.checkGaussianBlurValueButton)
+        option_layout.addLayout(self.gaussianBlurLayout)
+        
+        # side_layout.addWidget(apply_button)
 
         option_group.setLayout(option_layout)
         side_layout.addWidget(option_group)
@@ -194,7 +210,10 @@ class ImageEditorApp(QMainWindow):
 
     # Métodos para manejar las acciones de los botones "Aplicar" y "Visualizar"
     def apply_filters(self):
+        print("Applying filters...")
+        # self.bg_remover.get_final_mask(mask_dict=self.mask_list)
         self.bg_remover.apply_final_mask()
+        print("Final mask already obtained")
         k = self.bg_remover.modified_image*255
         k = k.astype(np.uint8)
         print("Result mask shape from apply", k.shape)
@@ -206,6 +225,7 @@ class ImageEditorApp(QMainWindow):
 
     def visualize_filters(self):
         print("Visualizing current mask from filters")
+        
         self.bg_remover.get_final_mask(mask_dict=self.mask_list)
         self.result_mask = self.bg_remover.class_mask * 255
         self.result_mask = self.result_mask.astype(np.uint8)
@@ -216,10 +236,22 @@ class ImageEditorApp(QMainWindow):
         self.pixmap_mask = self.convert_cv_qt(
             self.result_mask, saveSize=True,
             setResize=True, objetiveSize=(600, 300))
-        
+
         # canvas = QPixmap(600, 300)  # Adjust size as needed
         # canvas.fill(Qt.red)
         self.preview_label.setPixmap(self.pixmap_mask)
+
+    def checkGaussianBlurValue(self):
+        value = self.gaussianBlurValueInput.text()
+        try:
+            value = int(value)
+            if value <= 0:
+                raise ValueError("The value must be positive")
+            # Value is valid, you can use it for setting the Gaussian Blur value
+            print(f"Valid Gaussian Blur value: {value}")
+            self.bg_remover.set_GaussianBlurValue(value)
+        except ValueError as e:
+            QMessageBox.warning(self, "Invalid Value", str(e))
 
     def load_image(self):
         file_dialog = QFileDialog(self)
@@ -252,7 +284,7 @@ class ImageEditorApp(QMainWindow):
             if save_dialog.exec_():
                 save_path = save_dialog.selectedFiles()[0]
                 # Opcion 1 - Guardar con el tamaño original
-                n,m,_ = self.bg_remover.image_shape
+                n, m, _ = self.bg_remover.image_shape
                 a = self.convert_qt_cv(pixmap, setResize=True)
                 pixmap = self.convert_cv_qt(a, setResize=False,
                                             objetiveSize=(n, m))
@@ -281,7 +313,7 @@ class ImageEditorApp(QMainWindow):
 
     def select_color(self):
         color = QColorDialog.getColor()
-        if color.isValid():
+        if color.isValid() and self.currentTool != "eraser":
             self.brush_color = color
 
     def select_brush_size(self):
@@ -302,10 +334,27 @@ class ImageEditorApp(QMainWindow):
             self.currentTool = None
         else:
             self.currentTool = "pencil"
+            self.select_brush_size()
             print("Current tool: Pencil")
+
+    def use_eraser(self):
+        if self.currentTool == "eraser":
+            self.currentTool = None
+        else:
+            self.currentTool = "eraser"
+            self.brush_color = Qt.white  # Assuming white background
+            self.select_brush_size()
+            print("Current tool: Eraser")
 
     def mousePressEvent(self, event):
         if event.button() == Qt.LeftButton and self.currentTool == "pencil":
+            print("Mouse pressed")
+            self.drawing = True
+            # Convert global position to local position relative to label_image
+            localPos = self.label_image.mapFromGlobal(event.globalPos())
+            self.lastPoint = localPos
+        
+        if event.button() == Qt.LeftButton and self.currentTool == "eraser":
             print("Mouse pressed")
             self.drawing = True
             # Convert global position to local position relative to label_image
@@ -316,7 +365,7 @@ class ImageEditorApp(QMainWindow):
         if (
             (event.buttons() & Qt.LeftButton)
             and self.drawing
-            and self.currentTool == "pencil"
+            and (self.currentTool == "pencil" or self.currentTool == "eraser")
         ):
             print("Mouse is moving...")
             pixmap = self.label_image.pixmap()
@@ -341,15 +390,15 @@ class ImageEditorApp(QMainWindow):
         if (
             event.button() == Qt.LeftButton
             and self.drawing
-            and self.currentTool == "pencil"
+            and (self.currentTool == "pencil" or self.currentTool == "eraser")
         ):
             print("Mouse released")
             self.drawing = False
             # self.label_image.setPixmap(self.label_image.pixmap())
             # self.counter += 1
             print("Counter: ", self.counter)
-            if self.counter > 3:
-                self.save_image()
+            # if self.counter > 3:
+            #     self.save_image()
 
     # To convert from opencv to QPixmap
     def convert_cv_qt(
